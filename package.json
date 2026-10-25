@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:build": "npx @cloudflare/next-on-pages && node scripts/postbuild-cloudflare.js",
     "worker:email": "ts-node src/workers/emailSyncWorker.ts",
     "worker:reminders": "ts-node src/workers/reminderWorker.ts"
   },
