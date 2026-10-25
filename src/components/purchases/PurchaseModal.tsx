@@ -162,8 +162,8 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
         tax: parseFloat(tax) || 0,
         shipping: parseFloat(shipping) || 0,
         total: numericTotal,
-        return_deadline: calculatedReturnDate,
-        warranty_deadline: calculatedWarrantyDate,
+        return_deadline: calculatedReturnDate || undefined,
+        warranty_deadline: calculatedWarrantyDate || undefined,
         notes: notes || undefined,
         items,
       };

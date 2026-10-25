@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
-  const query = searchParams.get('q');
+  const rawQuery = searchParams.get('q');
+  const query = rawQuery?.trim() || null;
   const sortBy = searchParams.get('sort_by') || 'purchase_date';
   const sortDir = searchParams.get('sort_dir') === 'asc' ? true : false;
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
@@ -44,13 +45,38 @@ export async function GET(request: NextRequest) {
 
   dbQuery = dbQuery.order(sortBy, { ascending: sortDir }).limit(limit);
 
-  const { data, error } = await dbQuery;
+  let { data, error } = await dbQuery;
+
+  // Resilient fallback: If joined select fails (e.g. PostgREST schema cache reload), fallback to flat select
+  if (error) {
+    console.warn('Relational select failed in GET /api/purchases, falling back to flat select:', error.message);
+    let fallbackQuery = supabase
+      .from('purchases')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (status && status !== 'all') {
+      fallbackQuery = fallbackQuery.eq('status', status);
+    }
+    if (query) {
+      fallbackQuery = fallbackQuery.or(
+        `product_name.ilike.%${query}%,retailer_name.ilike.%${query}%,order_id.ilike.%${query}%`
+      );
+    }
+    fallbackQuery = fallbackQuery.order(sortBy, { ascending: sortDir }).limit(limit);
+    const fallbackRes = await fallbackQuery;
+    if (!fallbackRes.error) {
+      data = fallbackRes.data;
+      error = null;
+    }
+  }
 
   if (error) {
+    console.error('Database query error in GET /api/purchases:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ purchases: data });
+  return NextResponse.json({ purchases: data || [] });
 }
 
 export async function POST(request: NextRequest) {
@@ -140,13 +166,17 @@ export async function POST(request: NextRequest) {
       await supabase.from('purchase_items').insert(itemsToInsert);
     }
 
-    // Sync automated reminder schedules
-    await syncPurchaseReminders(
-      supabase,
-      purchase.id,
-      purchase.return_deadline,
-      purchase.warranty_deadline
-    );
+    // Sync automated reminder schedules safely
+    try {
+      await syncPurchaseReminders(
+        supabase,
+        purchase.id,
+        purchase.return_deadline,
+        purchase.warranty_deadline
+      );
+    } catch (remErr) {
+      console.warn('Reminder sync non-blocking error:', remErr);
+    }
 
     return NextResponse.json({ purchase }, { status: 201 });
   } catch (err: any) {

@@ -28,6 +28,7 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('purchase_date');
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Modal controls
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
 
   const fetchPurchases = async () => {
     setIsLoading(true);
+    setErrorMsg(null);
     try {
       const params = new URLSearchParams({
         status: statusFilter,
@@ -47,9 +49,12 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
       const data = await res.json();
       if (res.ok) {
         setPurchases(data.purchases || []);
+      } else {
+        setErrorMsg(data.error || 'Failed to load purchases');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error fetching purchases:', err);
+      setErrorMsg(err.message || 'Network error loading purchases');
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +97,15 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
           <span>Add Purchase</span>
         </Button>
       </div>
+
+      {errorMsg && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <Button variant="outline" size="sm" onClick={fetchPurchases}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <PurchaseFilters

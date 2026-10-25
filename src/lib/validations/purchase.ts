@@ -35,8 +35,8 @@ export const purchaseSchema = z.object({
   total: z.coerce.number().min(0, 'Total must be non-negative'),
   custom_return_days: z.coerce.number().int().min(0).max(3650).optional().nullable(),
   custom_warranty_months: z.coerce.number().int().min(0).max(240).optional().nullable(),
-  return_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  warranty_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  return_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).nullable(),
+  warranty_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).nullable(),
   notes: z.string().max(2000).optional().nullable(),
   items: z.array(purchaseItemSchema).optional().default([]),
 });
