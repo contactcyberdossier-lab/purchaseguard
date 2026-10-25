@@ -63,8 +63,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Refresh Supabase Auth Session
-  const { response, user } = await updateSession(request);
+  // Refresh Supabase Auth Session safely
+  let response = NextResponse.next();
+  let user = null;
+  try {
+    const sessionResult = await updateSession(request);
+    response = sessionResult.response;
+    user = sessionResult.user;
+  } catch (err) {
+    console.warn('Middleware updateSession caught error:', err);
+  }
 
   // Authentication Guard
   const isDashboardRoute = pathname.includes('/dashboard');

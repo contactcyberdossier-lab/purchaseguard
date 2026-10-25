@@ -20,13 +20,8 @@ export default function LocaleLayout({ children, params: { locale } }: LocaleLay
   const direction = isRTL(locale) ? 'rtl' : 'ltr';
 
   return (
-    <html lang={locale} dir={direction} suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-indigo-500 selection:text-white">
-        {children}
-      </body>
-    </html>
+    <div dir={direction} className="min-h-screen">
+      {children}
+    </div>
   );
 }
