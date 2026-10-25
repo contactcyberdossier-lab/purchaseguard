@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/webhooks/inbound-email (Forwarded Receipts)
 // Forwarding address: receipts@purchaseguard.app

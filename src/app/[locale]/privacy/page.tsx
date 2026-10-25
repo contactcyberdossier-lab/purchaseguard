@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import Link from 'next/link';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

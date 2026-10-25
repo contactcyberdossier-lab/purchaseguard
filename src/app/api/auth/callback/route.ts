@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // Supabase OAuth & Email Confirmation Callback Route
 // ========================================================

@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/user/delete (Account & Data Deletion)
 // ========================================================

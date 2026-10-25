@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 // ========================================================
 // Purchase Detail Page View with Tracking & Claim Tools
 // ========================================================

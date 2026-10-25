@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import Link from 'next/link';
 import { Shield } from 'lucide-react';
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';

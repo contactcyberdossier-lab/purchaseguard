@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/email-connections (Manage Connected Accounts)
 // ========================================================

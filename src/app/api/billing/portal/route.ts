@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/billing/portal (Stripe Customer Billing Portal)
 // ========================================================

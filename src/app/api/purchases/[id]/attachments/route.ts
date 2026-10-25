@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/purchases/[id]/attachments (Upload Receipts)
 // ========================================================

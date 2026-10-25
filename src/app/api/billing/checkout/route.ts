@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/billing/checkout (Stripe Checkout Session)
 // ========================================================

@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // ========================================================
 // API Route: /api/auth/oauth/google/callback (Gmail Callback)
 // ========================================================
