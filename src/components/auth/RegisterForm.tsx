@@ -52,7 +52,7 @@ export function RegisterForm({ locale }: RegisterFormProps) {
             full_name: fullName,
             preferred_language: locale,
           },
-          emailRedirectTo: `${window.location.origin}/${locale}/api/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
 

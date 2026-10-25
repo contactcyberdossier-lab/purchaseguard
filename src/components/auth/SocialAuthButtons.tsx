@@ -24,7 +24,7 @@ export function SocialAuthButtons({ locale }: SocialAuthButtonsProps) {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/${locale}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
     } catch {
