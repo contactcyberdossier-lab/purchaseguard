@@ -28,6 +28,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.8",
     "@playwright/test": "^1.50.1",
     "@types/node": "^20.17.16",
     "@types/react": "^18.3.18",
