@@ -3,7 +3,16 @@
 // ========================================================
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { randomBytes } from 'crypto';
+
+function getRandomHex(bytes: number = 12): string {
+  const arr = new Uint8Array(bytes);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(arr);
+  } else {
+    for (let i = 0; i < bytes; i++) arr[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(arr, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export const ALLOWED_RECEIPT_TYPES = [
   'application/pdf',
@@ -51,7 +60,7 @@ export async function uploadReceiptFile({
   mimeType: string;
 }): Promise<{ path: string; error?: string }> {
   const extension = fileName.split('.').pop()?.toLowerCase() || 'bin';
-  const randomSuffix = randomBytes(12).toString('hex');
+  const randomSuffix = getRandomHex(12);
   const storagePath = `${userId}/${purchaseId}/${randomSuffix}.${extension}`;
 
   const { error: uploadError } = await supabase.storage
