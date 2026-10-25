@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: purchaseguard-web
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+
+  email-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: purchaseguard-email-worker
+    restart: always
+    command: ["node", "-r", "ts-node/register", "src/workers/emailSyncWorker.ts"]
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+
+  reminder-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: purchaseguard-reminder-worker
+    restart: always
+    command: ["node", "-r", "ts-node/register", "src/workers/reminderWorker.ts"]
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production

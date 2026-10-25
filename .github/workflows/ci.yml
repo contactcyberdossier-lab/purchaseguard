@@ -1,0 +1,57 @@
+name: PurchaseGuard CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-and-test:
+    name: Build, Audit & Test
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-anon-key
+      FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: purchaseguard/package.json
+
+      - name: Install Dependencies
+        working-directory: purchaseguard
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        working-directory: purchaseguard
+        run: npx tsc --noEmit
+
+      - name: Run Vitest Unit & Integration Tests
+        working-directory: purchaseguard
+        run: npm run test
+
+      - name: Install Playwright Browsers
+        working-directory: purchaseguard
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Next.js Application
+        working-directory: purchaseguard
+        run: npm run build
+
+      - name: Run Playwright E2E Tests
+        working-directory: purchaseguard
+        run: npx playwright test
+
+      - name: Audit Dependencies for Known Vulnerabilities
+        working-directory: purchaseguard
+        run: npm audit --audit-level=high || true
