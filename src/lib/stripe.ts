@@ -75,7 +75,7 @@ export function getStripeClient() {
   }
 
   return new Stripe(apiKey, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2025-02-24.acacia' as any,
     appInfo: {
       name: 'PurchaseGuard',
       version: '1.0.0',

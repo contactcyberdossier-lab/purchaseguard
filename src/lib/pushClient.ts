@@ -92,7 +92,7 @@ export async function triggerLocalTestNotification(): Promise<boolean> {
   if (!reg) return false;
 
   if (Notification.permission === 'granted') {
-    await reg.showNotification('⏰ PurchaseGuard Return Reminder', {
+    const options: any = {
       body: 'Action Required: Only 3 days left to return Sony WH-1000XM5! Tap to prepare return.',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
@@ -100,7 +100,8 @@ export async function triggerLocalTestNotification(): Promise<boolean> {
       data: {
         url: '/en/dashboard',
       },
-    });
+    };
+    await reg.showNotification('⏰ PurchaseGuard Return Reminder', options);
     return true;
   }
   return false;
