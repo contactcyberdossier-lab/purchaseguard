@@ -109,7 +109,27 @@ export async function sendWhatsAppMessage({
     }
   }
 
-  // 3. Fallback / Test Simulation Mode
+  // 3. Send via CallMeBot (100% Free, Zero Cost WhatsApp API)
+  const callMeBotKey = process.env.CALLMEBOT_API_KEY;
+  if (callMeBotKey) {
+    try {
+      const encodedText = encodeURIComponent(body);
+      const cleanPhone = formattedTo.replace('+', '');
+      const endpoint = `https://api.callmebot.com/whatsapp.php?phone=${cleanPhone}&text=${encodedText}&apikey=${callMeBotKey}`;
+
+      const res = await fetch(endpoint);
+      const resText = await res.text();
+      if (!res.ok || resText.includes('ERROR')) {
+        return { success: false, error: resText || 'CallMeBot WhatsApp dispatch failed' };
+      }
+
+      return { success: true, messageId: `cmb-${Date.now()}` };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 4. Fallback / Test Simulation Mode
   console.log(`[WhatsApp Simulated Alert] To: ${formattedTo}\nMessage:\n${body}`);
   return {
     success: true,
