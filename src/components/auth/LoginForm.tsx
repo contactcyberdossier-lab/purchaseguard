@@ -151,7 +151,7 @@ export function LoginForm({ locale }: LoginFormProps) {
           disabled={isLoading}
           className="w-full h-11 text-sm font-semibold rounded-xl"
         >
-          {isLoading ? dict.common.loading : dict.auth.signInButton}
+          {isLoading ? dict.common.loading : dict.auth.submitSignIn}
         </Button>
       </form>
 
@@ -161,7 +161,7 @@ export function LoginForm({ locale }: LoginFormProps) {
           href={`/${locale}/register`}
           className="text-primary hover:underline font-semibold"
         >
-          {dict.auth.signUpButton}
+          {dict.auth.submitSignUp}
         </Link>
       </p>
     </div>

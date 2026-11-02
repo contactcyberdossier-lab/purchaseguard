@@ -158,17 +158,24 @@
     "emailLabel": "Email address",
     "passwordLabel": "Password",
     "fullNameLabel": "Full name",
+    "nameLabel": "Full name",
     "submitSignIn": "Sign In",
+    "signInButton": "Sign In",
     "submitSignUp": "Create Account",
+    "signUpButton": "Create Account",
     "forgotPassword": "Forgot your password?",
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
+    "hasAccount": "Already have an account?",
     "orContinueWith": "Or continue with",
     "googleAuth": "Continue with Google",
     "appleAuth": "Continue with Apple",
     "resetTitle": "Reset your password",
     "resetSubtitle": "Enter your email address to receive a secure reset link",
     "submitReset": "Send Reset Link",
-    "backToLogin": "Back to sign in"
+    "backToLogin": "Back to sign in",
+    "backToSignIn": "Back to sign in",
+    "checkEmailTitle": "Check your email",
+    "checkEmailSub": "We sent you a confirmation link. Please check your inbox to complete registration."
   }
 }

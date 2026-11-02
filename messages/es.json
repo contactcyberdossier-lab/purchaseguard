@@ -158,17 +158,24 @@
     "emailLabel": "Correo electrónico",
     "passwordLabel": "Contraseña",
     "fullNameLabel": "Nombre completo",
+    "nameLabel": "Nombre completo",
     "submitSignIn": "Iniciar Sesión",
+    "signInButton": "Iniciar Sesión",
     "submitSignUp": "Crear Cuenta",
+    "signUpButton": "Crear Cuenta",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "noAccount": "¿No tienes cuenta?",
     "haveAccount": "¿Ya tienes una cuenta?",
+    "hasAccount": "¿Ya tienes una cuenta?",
     "orContinueWith": "O continúa con",
     "googleAuth": "Continuar con Google",
     "appleAuth": "Continuar con Apple",
     "resetTitle": "Restablecer tu contraseña",
     "resetSubtitle": "Ingresa tu correo para recibir un enlace seguro",
     "submitReset": "Enviar Enlace",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "backToSignIn": "Volver al inicio de sesión",
+    "checkEmailTitle": "Revisa tu correo",
+    "checkEmailSub": "Te hemos enviado un enlace de confirmación. Por favor revisa tu bandeja de entrada para completar el registro."
   }
 }

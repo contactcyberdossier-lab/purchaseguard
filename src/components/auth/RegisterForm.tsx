@@ -103,7 +103,7 @@ export function RegisterForm({ locale }: RegisterFormProps) {
         </p>
         <Link href={`/${locale}/login`}>
           <Button variant="outline" className="mt-4">
-            {dict.auth.backToSignIn}
+            {dict.auth.backToLogin}
           </Button>
         </Link>
       </div>
@@ -147,7 +147,7 @@ export function RegisterForm({ locale }: RegisterFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-foreground mb-1.5">
-            {dict.auth.nameLabel}
+            {dict.auth.fullNameLabel}
           </label>
           <input
             type="text"
@@ -220,17 +220,17 @@ export function RegisterForm({ locale }: RegisterFormProps) {
           disabled={isLoading}
           className="w-full h-11 text-sm font-semibold rounded-xl"
         >
-          {isLoading ? dict.common.loading : dict.auth.signUpButton}
+          {isLoading ? dict.common.loading : dict.auth.submitSignUp}
         </Button>
       </form>
 
       <p className="text-center text-xs text-muted-foreground">
-        {dict.auth.hasAccount}{' '}
+        {dict.auth.haveAccount}{' '}
         <Link
           href={`/${locale}/login`}
           className="text-primary hover:underline font-semibold"
         >
-          {dict.auth.signInButton}
+          {dict.auth.submitSignIn}
         </Link>
       </p>
     </div>
