@@ -8,7 +8,20 @@ export const runtime = 'edge';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, ShoppingBag, DollarSign, Crown, ArrowUpRight, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { 
+  Users, 
+  ShoppingBag, 
+  DollarSign, 
+  Crown, 
+  ArrowUpRight, 
+  Clock, 
+  AlertTriangle, 
+  ShieldCheck, 
+  Bell, 
+  Send, 
+  CheckCircle2, 
+  Loader2 
+} from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
@@ -30,6 +43,37 @@ export default function AdminOverviewPage({ params: { locale } }: { params: { lo
   const [recentPurchases, setRecentPurchases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isProcessingReminders, setIsProcessingReminders] = useState(false);
+  const [remindersFeedback, setRemindersFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    dispatched?: any[];
+  } | null>(null);
+
+  const handleRunReminders = async (force: boolean = false) => {
+    setIsProcessingReminders(true);
+    setRemindersFeedback(null);
+    try {
+      const res = await fetch(`/api/admin/reminders/process?force=${force}`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to process reminders');
+      setRemindersFeedback({
+        type: 'success',
+        message: data.message,
+        dispatched: data.dispatched,
+      });
+    } catch (err: any) {
+      setRemindersFeedback({
+        type: 'error',
+        message: err.message || 'Error executing reminders dispatch',
+      });
+    } finally {
+      setIsProcessingReminders(false);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -161,6 +205,75 @@ export default function AdminOverviewPage({ params: { locale } }: { params: { lo
           </CardContent>
         </Card>
       </div>
+
+      {/* Reminders Dispatch & Notification Engine Control Card */}
+      <Card className="border-border bg-card shadow-sm">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <Bell className="w-4 h-4" />
+              </div>
+              <CardTitle className="text-base font-semibold">
+                Automated Reminders & Notification Engine
+              </CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Evaluates approaching return windows (7d, 3d, 1d) & warranties (30d), and dispatches automated Email and WhatsApp alerts to buyers.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isProcessingReminders}
+              onClick={() => handleRunReminders(false)}
+            >
+              {isProcessingReminders ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Clock className="w-3.5 h-3.5 mr-1.5" />}
+              Run Due Check
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              disabled={isProcessingReminders}
+              onClick={() => handleRunReminders(true)}
+              className="flex items-center gap-1.5"
+            >
+              {isProcessingReminders ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>Dispatch Approaching Alerts (Test Run)</span>
+            </Button>
+          </div>
+        </CardHeader>
+        {remindersFeedback && (
+          <CardContent className="pt-0">
+            <div
+              className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
+                remindersFeedback.type === 'success'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-destructive/10 text-destructive border border-destructive/20'
+              }`}
+            >
+              {remindersFeedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              )}
+              <div className="space-y-1">
+                <p className="font-semibold">{remindersFeedback.message}</p>
+                {remindersFeedback.dispatched && remindersFeedback.dispatched.length > 0 && (
+                  <ul className="list-disc pl-4 space-y-0.5 text-[11px] opacity-90">
+                    {remindersFeedback.dispatched.map((d: any, idx: number) => (
+                      <li key={idx}>
+                        <strong>{d.productName}</strong> ({d.daysLeft} days left) &rarr; {d.email} [Channels: {d.channels.join(', ')}]
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* 2 Detail Tables: Recent Signups & Recent Purchases */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
