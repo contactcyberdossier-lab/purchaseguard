@@ -488,3 +488,90 @@ CREATE POLICY "Users can delete their own receipts"
         bucket_id = 'receipts'
         AND (storage.foldername(name))[1] = auth.uid()::text
     );
+
+
+-- ========================================================
+-- ADMIN ROLES & PRIVILEGES (RBAC)
+-- ========================================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users' 
+        AND column_name = 'role'
+    ) THEN
+        ALTER TABLE public.users 
+        ADD COLUMN role VARCHAR(20) DEFAULT 'user' NOT NULL 
+        CHECK (role IN ('user', 'admin'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = auth.uid() AND role = 'admin'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Admin RLS Policies
+DROP POLICY IF EXISTS "Admins can view all users" ON public.users;
+CREATE POLICY "Admins can view all users"
+    ON public.users FOR SELECT
+    USING (public.is_admin() OR auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins can update any user" ON public.users;
+CREATE POLICY "Admins can update any user"
+    ON public.users FOR UPDATE
+    USING (public.is_admin() OR auth.uid() = id)
+    WITH CHECK (public.is_admin() OR auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins can view all purchases" ON public.purchases;
+CREATE POLICY "Admins can view all purchases"
+    ON public.purchases FOR SELECT
+    USING (public.is_admin() OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can update all purchases" ON public.purchases;
+CREATE POLICY "Admins can update all purchases"
+    ON public.purchases FOR UPDATE
+    USING (public.is_admin() OR auth.uid() = user_id)
+    WITH CHECK (public.is_admin() OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can delete all purchases" ON public.purchases;
+CREATE POLICY "Admins can delete all purchases"
+    ON public.purchases FOR DELETE
+    USING (public.is_admin() OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view all audit logs" ON public.audit_logs;
+CREATE POLICY "Admins can view all audit logs"
+    ON public.audit_logs FOR SELECT
+    USING (public.is_admin() OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view all subscription events" ON public.subscription_events;
+CREATE POLICY "Admins can view all subscription events"
+    ON public.subscription_events FOR SELECT
+    USING (public.is_admin() OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view all reminders" ON public.reminders;
+CREATE POLICY "Admins can view all reminders"
+    ON public.reminders FOR SELECT
+    USING (
+        public.is_admin() OR
+        EXISTS (
+            SELECT 1 FROM public.purchases
+            WHERE purchases.id = reminders.purchase_id
+            AND purchases.user_id = auth.uid()
+        )
+    );
+
+-- Automatically promote the first created user to admin if no admin exists
+UPDATE public.users 
+SET role = 'admin' 
+WHERE id = (SELECT id FROM public.users ORDER BY created_at ASC LIMIT 1)
+  AND NOT EXISTS (SELECT 1 FROM public.users WHERE role = 'admin');

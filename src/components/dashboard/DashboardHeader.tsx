@@ -6,7 +6,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, LogOut, User } from 'lucide-react';
+import { Shield, ShieldCheck, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { LanguageSelector } from '../ui/LanguageSelector';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -16,9 +16,11 @@ import { getDictionary } from '@/lib/i18n';
 interface DashboardHeaderProps {
   locale: string;
   userEmail?: string;
+  isAdmin?: boolean;
+  plan?: string;
 }
 
-export function DashboardHeader({ locale, userEmail }: DashboardHeaderProps) {
+export function DashboardHeader({ locale, userEmail, isAdmin = false, plan = 'free' }: DashboardHeaderProps) {
   const dict = getDictionary(locale);
   const router = useRouter();
   const supabase = createClient();
@@ -42,9 +44,19 @@ export function DashboardHeader({ locale, userEmail }: DashboardHeaderProps) {
               {dict.common.appName}
             </span>
           </Link>
-          <span className="hidden md:inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground font-mono">
-            MVP v1.0
-          </span>
+          
+          {isAdmin ? (
+            <Link href={`/${locale}/dashboard/admin`}>
+              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-bold text-primary font-mono shadow-sm hover:bg-primary/20 transition-colors">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                ADMIN PORTAL
+              </span>
+            </Link>
+          ) : (
+            <span className="hidden md:inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground font-mono">
+              MVP v1.0
+            </span>
+          )}
         </div>
 
         {/* Right Actions */}
@@ -55,10 +67,19 @@ export function DashboardHeader({ locale, userEmail }: DashboardHeaderProps) {
           {/* User profile info & sign out */}
           <div className="flex items-center gap-2 pl-2 border-l border-border rtl:border-l-0 rtl:border-r rtl:pl-0 rtl:pr-2">
             <div className="hidden lg:flex flex-col text-right rtl:text-left text-xs">
-              <span className="font-semibold text-foreground max-w-[140px] truncate">
-                {userEmail || 'My Account'}
+              <div className="flex items-center gap-1.5 justify-end">
+                <span className="font-semibold text-foreground max-w-[140px] truncate">
+                  {userEmail || 'My Account'}
+                </span>
+                {isAdmin && (
+                  <span className="bg-primary text-primary-foreground px-1.5 py-0.2 rounded text-[9px] font-bold">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+              <span className="text-muted-foreground text-[10px] uppercase font-mono">
+                {plan} Tier
               </span>
-              <span className="text-muted-foreground text-[10px]">Free Tier</span>
             </div>
 
             <Button
