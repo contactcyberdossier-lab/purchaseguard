@@ -2,6 +2,20 @@
 // Client-side Web Push & Device Notification Helper
 // ========================================================
 
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BAvJBudAbx7KhzpACOYweYWuktLqLE19h93VuQUeJgyKDiPKXukKRI5nQkowxVwcbY6dGFVD6jsjrAs5qJ3KAPA';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export async function isPushNotificationSupported(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -47,16 +61,29 @@ export async function subscribeToDeviceNotifications(): Promise<{
   }
 
   try {
-    // Generate or get existing subscription
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
+    const applicationServerKey = urlBase64ToUint8Array(vapidKey);
+
+    // Check existing subscription
     let sub = await reg.pushManager.getSubscription();
+
     if (!sub) {
-      // In production, VAPID key is passed. For fallback, standard subscribe
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      const options: PushSubscriptionOptionsInit = {
-        userVisibleOnly: true,
-        ...(vapidKey ? { applicationServerKey: vapidKey } : {}),
-      };
-      sub = await reg.pushManager.subscribe(options);
+      try {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey as any,
+        });
+      } catch (subErr) {
+        // If subscription failed due to old key mismatch, unsubscribe and retry
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          await existing.unsubscribe();
+        }
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey as any,
+        });
+      }
     }
 
     const subJson = sub.toJSON();
@@ -88,21 +115,41 @@ export async function subscribeToDeviceNotifications(): Promise<{
  * Sends an immediate local test notification on device
  */
 export async function triggerLocalTestNotification(): Promise<boolean> {
-  const reg = await registerServiceWorker();
-  if (!reg) return false;
+  if (typeof window === 'undefined' || !('Notification' in window)) return false;
 
-  if (Notification.permission === 'granted') {
-    const options: any = {
-      body: 'Action Required: Only 3 days left to return Sony WH-1000XM5! Tap to prepare return.',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [200, 100, 200],
-      data: {
-        url: '/en/dashboard',
-      },
-    };
-    await reg.showNotification('⏰ PurchaseGuard Return Reminder', options);
-    return true;
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    perm = await Notification.requestPermission();
   }
-  return false;
+
+  if (perm !== 'granted') {
+    return false;
+  }
+
+  const reg = await registerServiceWorker();
+  if (!reg) {
+    // Fallback directly to Notification constructor if available
+    try {
+      new Notification('⏰ PurchaseGuard Return Reminder', {
+        body: 'Action Required: Only 3 days left to return Sony WH-1000XM5! Tap to prepare return.',
+        icon: '/icon-192.png',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const options: any = {
+    body: 'Action Required: Only 3 days left to return Sony WH-1000XM5! Tap to prepare return.',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      url: '/en/dashboard',
+    },
+  };
+
+  await reg.showNotification('⏰ PurchaseGuard Return Reminder', options);
+  return true;
 }
