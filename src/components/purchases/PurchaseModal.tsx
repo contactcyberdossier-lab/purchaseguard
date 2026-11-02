@@ -5,7 +5,7 @@
 // ========================================================
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { X, Sparkles, AlertCircle, Plus, Trash2, Camera, UploadCloud, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { SUPPORTED_CURRENCIES, type PurchaseInput } from '@/lib/validations/purchase';
 import { calculateDeadlines, matchRetailerPolicy } from '@/lib/deadlines';
@@ -41,6 +41,8 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
   const [items, setItems] = useState<{ name: string; quantity: number; unit_price: number; total_price: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState<string | null>(null);
 
   // Populate when editing
   useEffect(() => {
@@ -137,6 +139,51 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setItems(updated);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setError(null);
+    setScanSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/ocr/scan', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to scan receipt');
+
+      const ext = data.extracted;
+      if (ext) {
+        if (ext.retailer_name) setRetailerName(ext.retailer_name);
+        if (ext.product_name) setProductName(ext.product_name);
+        if (ext.order_id) setOrderId(ext.order_id);
+        if (ext.purchase_date) setPurchaseDate(ext.purchase_date);
+        if (ext.currency) setCurrency(ext.currency);
+        if (ext.total) setTotal(String(ext.total));
+        if (ext.subtotal) setSubtotal(String(ext.subtotal));
+        if (ext.tax) setTax(String(ext.tax));
+        if (ext.shipping) setShipping(String(ext.shipping));
+        if (ext.items && ext.items.length > 0) setItems(ext.items);
+        if (ext.return_deadline) setCalculatedReturnDate(ext.return_deadline);
+        if (ext.warranty_deadline) setCalculatedWarrantyDate(ext.warranty_deadline);
+
+        setScanSuccess(`Extracted details from ${ext.retailer_name || 'receipt'}! Verify information below.`);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error scanning receipt. You can still enter details manually.');
+    } finally {
+      setIsScanning(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -218,6 +265,57 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
           <div className="mt-4 p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-destructive text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* OCR Receipt Scanner Banner */}
+        {!isEditing && (
+          <div className="mt-5 p-4 rounded-xl border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <span>Scan Receipt / Invoice (AI OCR)</span>
+                    <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">AUTO-FILL</span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Take a photo with your mobile camera or upload an image/PDF.
+                  </p>
+                </div>
+              </div>
+
+              <label className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-all shadow-sm shrink-0">
+                {isScanning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Extracting Details...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Take Photo / Upload</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  disabled={isScanning}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {scanSuccess && (
+              <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{scanSuccess}</span>
+              </div>
+            )}
           </div>
         )}
 

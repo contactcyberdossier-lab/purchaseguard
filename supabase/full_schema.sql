@@ -575,3 +575,45 @@ UPDATE public.users
 SET role = 'admin' 
 WHERE id = (SELECT id FROM public.users ORDER BY created_at ASC LIMIT 1)
   AND NOT EXISTS (SELECT 1 FROM public.users WHERE role = 'admin');
+
+
+-- ========================================================
+-- NOTIFICATIONS (WHATSAPP & DEVICE PUSH) & OCR METADATA
+-- ========================================================
+
+ALTER TABLE public.users 
+ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30),
+ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS email_reminders_enabled BOOLEAN DEFAULT TRUE;
+
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    CONSTRAINT unique_user_endpoint UNIQUE (user_id, endpoint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subs_user_id ON public.push_subscriptions(user_id);
+
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage their push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can manage their push subscriptions"
+    ON public.push_subscriptions FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Admins can view push subscriptions"
+    ON public.push_subscriptions FOR SELECT
+    USING (public.is_admin() OR auth.uid() = user_id);
+
+ALTER TABLE public.attachments
+ADD COLUMN IF NOT EXISTS ocr_data JSONB DEFAULT '{}'::jsonb,
+ADD COLUMN IF NOT EXISTS ocr_status VARCHAR(20) DEFAULT 'none' CHECK (ocr_status IN ('none', 'pending', 'completed', 'failed'));

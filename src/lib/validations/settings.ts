@@ -7,11 +7,15 @@ import { SUPPORTED_CURRENCIES } from './purchase';
 import { locales } from '../i18n';
 
 export const userProfileSchema = z.object({
-  full_name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
-  country: z.string().length(2, 'Country code must be 2 characters (ISO)').toUpperCase(),
-  preferred_language: z.enum(locales),
-  preferred_currency: z.enum(SUPPORTED_CURRENCIES),
-  timezone: z.string().min(1, 'Timezone is required'),
+  full_name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+  country: z.string().length(2, 'Country code must be 2 characters (ISO)').toUpperCase().optional(),
+  preferred_language: z.enum(locales).optional(),
+  preferred_currency: z.enum(SUPPORTED_CURRENCIES).optional(),
+  timezone: z.string().min(1, 'Timezone is required').optional(),
+  phone_number: z.string().max(30).optional().nullable(),
+  whatsapp_enabled: z.boolean().optional(),
+  push_enabled: z.boolean().optional(),
+  email_reminders_enabled: z.boolean().optional(),
 });
 
 export const notificationPreferencesSchema = z.object({

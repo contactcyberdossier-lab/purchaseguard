@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { sendTransactionalEmail, buildReturnDeadlineAlertHtml } from '../lib/notifications';
+import { sendWhatsAppMessage, formatWhatsAppReturnAlert, formatWhatsAppWarrantyAlert } from '../lib/whatsapp';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key';
@@ -68,6 +69,34 @@ export async function processPendingReminders() {
       subject,
       htmlContent: html,
     });
+
+    // Also dispatch WhatsApp notification if enabled
+    if (user.whatsapp_enabled && user.phone_number) {
+      try {
+        const waText = rem.reminder_type === 'warranty_deadline'
+          ? formatWhatsAppWarrantyAlert({
+              productName: purchase.product_name,
+              retailerName: purchase.retailer_name,
+              warrantyDeadline: purchase.warranty_deadline || purchase.return_deadline,
+              dashboardUrl,
+            })
+          : formatWhatsAppReturnAlert({
+              productName: purchase.product_name,
+              retailerName: purchase.retailer_name,
+              returnDeadline: purchase.return_deadline,
+              daysLeft,
+              dashboardUrl,
+            });
+
+        await sendWhatsAppMessage({
+          to: user.phone_number,
+          body: waText,
+        });
+        console.log(`[Reminders Worker] WhatsApp alert sent to ${user.phone_number}`);
+      } catch (waErr) {
+        console.error('[Reminders Worker] WhatsApp dispatch error:', waErr);
+      }
+    }
 
     if (result.success) {
       await supabase
