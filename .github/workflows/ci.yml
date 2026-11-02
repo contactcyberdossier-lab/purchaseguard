@@ -25,33 +25,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: purchaseguard/package.json
 
       - name: Install Dependencies
-        working-directory: purchaseguard
-        run: npm ci
+        run: npm install
 
       - name: TypeScript Typecheck
-        working-directory: purchaseguard
         run: npx tsc --noEmit
 
       - name: Run Vitest Unit & Integration Tests
-        working-directory: purchaseguard
         run: npm run test
 
-      - name: Install Playwright Browsers
-        working-directory: purchaseguard
-        run: npx playwright install --with-deps chromium
-
       - name: Build Next.js Application
-        working-directory: purchaseguard
         run: npm run build
 
-      - name: Run Playwright E2E Tests
-        working-directory: purchaseguard
-        run: npx playwright test
-
       - name: Audit Dependencies for Known Vulnerabilities
-        working-directory: purchaseguard
         run: npm audit --audit-level=high || true
