@@ -2,6 +2,8 @@
 // Stripe Billing & Subscription Infrastructure
 // ========================================================
 
+import Stripe from 'stripe';
+
 export interface PricingPlan {
   id: 'free' | 'plus_monthly' | 'plus_annual';
   name: string;
@@ -72,8 +74,6 @@ export function getStripeClient() {
     throw new Error('STRIPE_SECRET_KEY is not configured in environment variables');
   }
 
-  // Use dynamic import or standard require to instantiate
-  const Stripe = require('stripe');
   return new Stripe(apiKey, {
     apiVersion: '2024-06-20',
     appInfo: {

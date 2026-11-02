@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
     }
 
     const fileBytes = await file.arrayBuffer();
-    const buffer = Buffer.from(fileBytes);
     const mimeType = file.type || 'image/jpeg';
     const originalName = file.name || 'receipt.jpg';
 
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
     let uploadedPath = '';
     const { data: uploadData, error: uploadErr } = await supabase.storage
       .from('receipts')
-      .upload(storagePath, buffer, {
+      .upload(storagePath, fileBytes, {
         contentType: mimeType,
         upsert: false,
       });
@@ -69,14 +68,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Perform OCR Extraction
-    // Check if Gemini Vision API key is available
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
     let extracted: ExtractedReceipt | null = null;
 
     if (geminiApiKey) {
       try {
-        const base64Data = buffer.toString('base64');
+        // Convert ArrayBuffer to base64 in Edge runtime
+        let binary = '';
+        const bytes = new Uint8Array(fileBytes);
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Data = btoa(binary);
         const prompt = `Analyze this purchase receipt or invoice. Extract the following fields as strict JSON without markdown formatting:
 {
   "retailer_name": "Store/Retailer name",

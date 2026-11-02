@@ -50,7 +50,7 @@ export async function sendWhatsAppMessage({
   if (twilioSid && twilioToken && !twilioSid.includes('placeholder')) {
     try {
       const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-      const authHeader = 'Basic ' + Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
+      const authHeader = 'Basic ' + btoa(`${twilioSid}:${twilioToken}`);
 
       const formData = new URLSearchParams();
       formData.append('From', twilioFrom.startsWith('whatsapp:') ? twilioFrom : `whatsapp:${twilioFrom}`);
