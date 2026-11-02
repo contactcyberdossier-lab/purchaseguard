@@ -57,7 +57,13 @@ export function RegisterForm({ locale }: RegisterFormProps) {
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        if (signUpError.message === 'Failed to fetch') {
+          setError(
+            'Cannot reach Supabase database. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set for Production in Vercel Settings > Environment Variables, and that you trigger a Redeploy.'
+          );
+        } else {
+          setError(signUpError.message);
+        }
         setIsLoading(false);
         return;
       }
@@ -71,24 +77,33 @@ export function RegisterForm({ locale }: RegisterFormProps) {
 
       router.push(`/${locale}/dashboard`);
       router.refresh();
-    } catch {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err: any) {
+      if (err?.message === 'Failed to fetch') {
+        setError(
+          'Cannot reach Supabase database. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set for Production in Vercel Settings > Environment Variables, and that you trigger a Redeploy.'
+        );
+      } else {
+        setError(err?.message || 'An unexpected error occurred. Please try again.');
+      }
       setIsLoading(false);
     }
   };
 
   if (isSuccess) {
     return (
-      <div className="w-full max-w-md mx-auto text-center space-y-4 p-6 rounded-2xl border border-border bg-card">
-        <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
-        <h2 className="text-2xl font-bold text-foreground">Verify your email</h2>
+      <div className="w-full max-w-md mx-auto p-8 rounded-2xl border border-border bg-card shadow-sm text-center space-y-4">
+        <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+          <CheckCircle2 className="w-6 h-6" />
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          {dict.auth.checkEmailTitle}
+        </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          We’ve sent a verification link to <strong className="text-foreground">{email}</strong>.
-          Please check your inbox to activate your account.
+          {dict.auth.checkEmailSub}
         </p>
         <Link href={`/${locale}/login`}>
-          <Button variant="outline" className="mt-4 w-full">
-            {dict.common.login}
+          <Button variant="outline" className="mt-4">
+            {dict.auth.backToSignIn}
           </Button>
         </Link>
       </div>
@@ -107,10 +122,10 @@ export function RegisterForm({ locale }: RegisterFormProps) {
       {error && (
         <div
           role="alert"
-          className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm flex items-center gap-2"
+          className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm flex items-start gap-2.5"
         >
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span className="leading-snug">{error}</span>
         </div>
       )}
 
@@ -128,88 +143,96 @@ export function RegisterForm({ locale }: RegisterFormProps) {
         </div>
       </div>
 
-      {/* Sign Up Form */}
+      {/* Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-foreground mb-1.5">
-            {dict.auth.fullNameLabel}
+          <label className="block text-xs font-medium text-foreground mb-1.5">
+            {dict.auth.nameLabel}
           </label>
           <input
-            id="fullName"
             type="text"
-            required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Jane Doe"
+            required
+            autoComplete="name"
+            className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             {dict.auth.emailLabel}
           </label>
           <input
-            id="email"
             type="email"
-            autoComplete="email"
-            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="name@example.com"
+            placeholder="you@example.com"
+            required
+            autoComplete="email"
+            className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             {dict.auth.passwordLabel}
           </label>
           <input
-            id="password"
             type="password"
-            autoComplete="new-password"
-            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="••••••••••••"
+            required
+            autoComplete="new-password"
+            className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Must be at least 8 characters with upper, lower, number, and special character.
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Must be at least 8 characters with 1 number and 1 special character.
           </p>
         </div>
 
-        <div className="flex items-start gap-2 pt-1">
+        <div className="flex items-start gap-2.5 pt-1">
           <input
-            id="terms"
             type="checkbox"
+            id="terms"
             checked={acceptTerms}
             onChange={(e) => setAcceptTerms(e.target.checked)}
-            className="mt-1 rounded border-input text-primary focus:ring-ring"
+            required
+            className="h-4 w-4 mt-0.5 rounded border-border text-primary focus:ring-primary"
           />
           <label htmlFor="terms" className="text-xs text-muted-foreground leading-normal">
             I agree to the{' '}
-            <Link href={`/${locale}/terms`} className="text-primary underline">
+            <Link href={`/${locale}/terms`} className="text-primary hover:underline font-medium">
               Terms of Service
             </Link>{' '}
-            and{' '}
-            <Link href={`/${locale}/privacy`} className="text-primary underline">
+            and acknowledge the{' '}
+            <Link href={`/${locale}/privacy`} className="text-primary hover:underline font-medium">
               Privacy Policy
-            </Link>.
+            </Link>
+            .
           </label>
         </div>
 
-        <Button type="submit" className="w-full h-11" isLoading={isLoading}>
-          {dict.auth.submitSignUp}
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-11 text-sm font-semibold rounded-xl"
+        >
+          {isLoading ? dict.common.loading : dict.auth.signUpButton}
         </Button>
       </form>
 
-      <div className="text-center text-sm text-muted-foreground">
-        {dict.auth.haveAccount}{' '}
-        <Link href={`/${locale}/login`} className="text-primary font-semibold hover:underline">
-          {dict.common.login}
+      <p className="text-center text-xs text-muted-foreground">
+        {dict.auth.hasAccount}{' '}
+        <Link
+          href={`/${locale}/login`}
+          className="text-primary hover:underline font-semibold"
+        >
+          {dict.auth.signInButton}
         </Link>
-      </div>
+      </p>
     </div>
   );
 }

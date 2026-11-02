@@ -48,15 +48,27 @@ export function LoginForm({ locale }: LoginFormProps) {
       });
 
       if (signInError) {
-        setError(signInError.message);
+        if (signInError.message === 'Failed to fetch') {
+          setError(
+            'Cannot reach Supabase database. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set for Production in Vercel Settings > Environment Variables, and that you trigger a Redeploy.'
+          );
+        } else {
+          setError(signInError.message);
+        }
         setIsLoading(false);
         return;
       }
 
       router.push(`/${locale}/dashboard`);
       router.refresh();
-    } catch {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err: any) {
+      if (err?.message === 'Failed to fetch') {
+        setError(
+          'Cannot reach Supabase database. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set for Production in Vercel Settings > Environment Variables, and that you trigger a Redeploy.'
+        );
+      } else {
+        setError(err?.message || 'An unexpected error occurred. Please try again.');
+      }
       setIsLoading(false);
     }
   };
@@ -73,10 +85,10 @@ export function LoginForm({ locale }: LoginFormProps) {
       {error && (
         <div
           role="alert"
-          className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm flex items-center gap-2"
+          className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm flex items-start gap-2.5"
         >
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span className="leading-snug">{error}</span>
         </div>
       )}
 
@@ -97,30 +109,23 @@ export function LoginForm({ locale }: LoginFormProps) {
       {/* Email Password Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-foreground mb-1.5"
-          >
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             {dict.auth.emailLabel}
           </label>
           <input
-            id="email"
             type="email"
-            autoComplete="email"
-            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="name@example.com"
+            placeholder="you@example.com"
+            required
+            autoComplete="email"
+            className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
           />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-foreground"
-            >
+            <label className="text-xs font-medium text-foreground">
               {dict.auth.passwordLabel}
             </label>
             <Link
@@ -131,30 +136,34 @@ export function LoginForm({ locale }: LoginFormProps) {
             </Link>
           </div>
           <input
-            id="password"
             type="password"
-            autoComplete="current-password"
-            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="••••••••••••"
+            required
+            autoComplete="current-password"
+            className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
           />
         </div>
 
-        <Button type="submit" className="w-full h-11" isLoading={isLoading}>
-          {dict.auth.submitSignIn}
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-11 text-sm font-semibold rounded-xl"
+        >
+          {isLoading ? dict.common.loading : dict.auth.signInButton}
         </Button>
       </form>
 
-      <div className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-xs text-muted-foreground">
         {dict.auth.noAccount}{' '}
         <Link
           href={`/${locale}/register`}
-          className="text-primary font-semibold hover:underline"
+          className="text-primary hover:underline font-semibold"
         >
-          {dict.nav.getStarted}
+          {dict.auth.signUpButton}
         </Link>
-      </div>
+      </p>
     </div>
   );
 }
