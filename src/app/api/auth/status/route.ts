@@ -68,6 +68,9 @@ export async function GET() {
       hasResendKey: Boolean(process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('...') && !process.env.RESEND_API_KEY.includes('placeholder')),
       fromAddress: process.env.EMAIL_FROM_ADDRESS || 'onboarding@resend.dev',
     },
+    gemini: {
+      hasKey: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY),
+    },
     timestamp: new Date().toISOString(),
   });
 }

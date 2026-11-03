@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ========================================================
 // API Route: /api/ocr/scan (Receipt & Invoice OCR Extraction)
@@ -49,61 +49,100 @@ export async function POST(request: NextRequest) {
     }
 
     const fileBytes = await file.arrayBuffer();
-    const mimeType = file.type || 'image/jpeg';
     const originalName = file.name || 'receipt.jpg';
+    
+    // Resolve proper MIME type
+    let mimeType = file.type || 'image/jpeg';
+    const lowerName = originalName.toLowerCase();
+    if (lowerName.endsWith('.png')) mimeType = 'image/png';
+    else if (lowerName.endsWith('.webp')) mimeType = 'image/webp';
+    else if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
+    else if (lowerName.endsWith('.heic')) mimeType = 'image/heic';
+    else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
 
     // 1. Upload receipt to user's private Supabase 'receipts' bucket
     const fileExt = originalName.split('.').pop() || 'jpg';
     const storagePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 
     let uploadedPath = '';
-    const { data: uploadData, error: uploadErr } = await supabase.storage
-      .from('receipts')
-      .upload(storagePath, fileBytes, {
-        contentType: mimeType,
-        upsert: false,
-      });
+    try {
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from('receipts')
+        .upload(storagePath, fileBytes, {
+          contentType: mimeType,
+          upsert: false,
+        });
 
-    if (!uploadErr && uploadData) {
-      uploadedPath = uploadData.path;
+      if (!uploadErr && uploadData) {
+        uploadedPath = uploadData.path;
+      }
+    } catch (storageErr) {
+      console.warn('Receipt storage upload skipped:', storageErr);
     }
 
-    // 2. Perform OCR Extraction
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    // 2. Perform OCR Extraction via Gemini Vision
+    const geminiApiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GEMINI_API_KEY ||
+      process.env.GOOGLE_AI_API_KEY;
 
-    let extracted: ExtractedReceipt | null = null;
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          receiptUrl: uploadedPath,
+          fileName: originalName,
+          error:
+            'AI OCR is not configured. GEMINI_API_KEY is missing from environment variables. Please add your free Gemini API key to Vercel, or enter purchase details manually.',
+        },
+        { status: 422 }
+      );
+    }
 
-    if (geminiApiKey) {
-      try {
-        // Convert ArrayBuffer to base64 in Edge runtime
-        let binary = '';
-        const bytes = new Uint8Array(fileBytes);
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const base64Data = btoa(binary);
-        const prompt = `Analyze this purchase receipt, utility bill, or payment invoice. Extract the following fields as strict JSON without markdown formatting:
+    const base64Data = Buffer.from(fileBytes).toString('base64');
+
+    const prompt = `You are an expert OCR engine specializing in reading receipts, invoices, store bills, utility bills, and food orders from both Indian and international merchants.
+Extract data from this document and output STRICT JSON conforming exactly to this schema without markdown fences:
 {
-  "retailer_name": "Store/Retailer/Provider name (e.g. Amazon, Best Buy, Verizon, PG&E)",
-  "product_name": "Primary item, service description, or bill payment description",
+  "retailer_name": "Store/Merchant/Provider name (e.g. Amazon, Flipkart, D-Mart, Reliance Digital, Croma, Swiggy, Zomato, BESCOM, Apple, Target, Walmart)",
+  "product_name": "Main item purchased or clear bill summary",
   "order_id": "Order or invoice number, or null",
   "purchase_date": "YYYY-MM-DD",
   "total": 0.00,
   "subtotal": 0.00,
   "tax": 0.00,
   "shipping": 0.00,
-  "currency": "USD",
+  "currency": "INR",
   "is_non_returnable": false,
   "items": [
-    { "name": "Item or fee description", "quantity": 1, "unit_price": 0.00, "total_price": 0.00 }
+    { "name": "Item description", "quantity": 1, "unit_price": 0.00, "total_price": 0.00 }
   ]
 }
 
-Classification rule for is_non_returnable:
-Set is_non_returnable to true if this document is a utility bill (electricity, water, gas, internet/cable), mobile recharge, food/restaurant receipt, digital gift card, or software subscription. Set is_non_returnable to false for physical merchandise that can be returned or exchanged.`;
+CRITICAL RULES:
+1. PURCHASE DATE:
+   - Normalize ANY date format (DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY, or Month DD, YYYY) into standard ISO "YYYY-MM-DD".
+   - If no date is found, use today's date.
+2. CURRENCY:
+   - If the receipt has '₹', 'Rs', 'Rs.', 'INR', or is from Indian merchants, use "INR".
+   - If '$', use "USD". If '€', use "EUR". If '£', use "GBP".
+3. TOTAL:
+   - Extract the exact grand total / net payable amount. Convert to numeric float.
+4. IS_NON_RETURNABLE:
+   - Set to true for utility bills (electricity, water, broadband, gas), mobile recharges, food deliveries (Swiggy/Zomato), restaurants, groceries, digital goods.
+   - Set to false for returnable consumer merchandise, electronics, clothing, shoes, furniture.
+5. ITEMS:
+   - Extract up to 10 distinct items if listed on the receipt.`;
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+    // Try Gemini 1.5 Flash, then fallback models if needed
+    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash'];
+    let geminiResponse: any = null;
+    let geminiError: string | null = null;
+
+    for (const model of models) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -129,82 +168,74 @@ Set is_non_returnable to true if this document is a utility bill (electricity, w
           }
         );
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const parsed = JSON.parse(rawText);
-            const isNonReturnable = Boolean(parsed.is_non_returnable);
-            const calculated = calculateDeadlines({
-              purchaseDate: parsed.purchase_date || new Date().toISOString().split('T')[0],
-              retailerName: parsed.retailer_name || 'Retailer',
-            });
-
-            extracted = {
-              retailer_name: parsed.retailer_name || 'Retailer',
-              product_name: parsed.product_name || parsed.items?.[0]?.name || 'Purchased Item',
-              order_id: parsed.order_id || null,
-              purchase_date: parsed.purchase_date || new Date().toISOString().split('T')[0],
-              total: Number(parsed.total) || 0,
-              subtotal: Number(parsed.subtotal) || Number(parsed.total) || 0,
-              tax: Number(parsed.tax) || 0,
-              shipping: Number(parsed.shipping) || 0,
-              currency: parsed.currency || 'USD',
-              return_deadline: isNonReturnable ? null : calculated.returnDeadline.toISOString().split('T')[0],
-              warranty_deadline: isNonReturnable ? null : calculated.warrantyDeadline.toISOString().split('T')[0],
-              is_non_returnable: isNonReturnable,
-              confidence: 0.95,
-              items: parsed.items || [],
-            };
-          }
+        if (res.ok) {
+          geminiResponse = await res.json();
+          break;
+        } else {
+          const errBody = await res.text();
+          geminiError = `Model ${model} returned status ${res.status}: ${errBody}`;
+          console.warn(geminiError);
         }
-      } catch (geminiErr) {
-        console.warn('Gemini vision OCR extraction fallback:', geminiErr);
+      } catch (err: any) {
+        geminiError = `Model ${model} network error: ${err.message}`;
+        console.warn(geminiError);
       }
     }
 
-    // Heuristic Fallback if Gemini not available or failed
-    if (!extracted) {
-      // Heuristic extraction based on common receipt naming & structure
-      const today = new Date().toISOString().split('T')[0];
-      const lowerName = originalName.toLowerCase();
-
-      let detectedRetailer = 'Amazon';
-      if (lowerName.includes('walmart')) detectedRetailer = 'Walmart';
-      else if (lowerName.includes('apple')) detectedRetailer = 'Apple';
-      else if (lowerName.includes('bestbuy') || lowerName.includes('best_buy')) detectedRetailer = 'Best Buy';
-      else if (lowerName.includes('target')) detectedRetailer = 'Target';
-      else if (lowerName.includes('costco')) detectedRetailer = 'Costco';
-      else if (lowerName.includes('nike')) detectedRetailer = 'Nike';
-
-      const calculated = calculateDeadlines({
-        purchaseDate: today,
-        retailerName: detectedRetailer,
-      });
-
-      extracted = {
-        retailer_name: detectedRetailer,
-        product_name: originalName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
-        order_id: `REC-${Date.now().toString().slice(-6)}`,
-        purchase_date: today,
-        total: 49.99,
-        subtotal: 45.00,
-        tax: 4.99,
-        shipping: 0.00,
-        currency: 'USD',
-        return_deadline: calculated.returnDeadline.toISOString().split('T')[0],
-        warranty_deadline: calculated.warrantyDeadline.toISOString().split('T')[0],
-        confidence: 0.75,
-        items: [
-          {
-            name: originalName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
-            quantity: 1,
-            unit_price: 45.00,
-            total_price: 45.00,
-          },
-        ],
-      };
+    if (!geminiResponse) {
+      return NextResponse.json(
+        {
+          success: false,
+          receiptUrl: uploadedPath,
+          fileName: originalName,
+          error: `AI OCR extraction failed (${geminiError || 'AI service unavailable'}). Please enter the details manually.`,
+        },
+        { status: 502 }
+      );
     }
+
+    const rawText = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      return NextResponse.json(
+        {
+          success: false,
+          receiptUrl: uploadedPath,
+          fileName: originalName,
+          error: 'Could not extract legible text from this image. Please check lighting or enter details manually.',
+        },
+        { status: 422 }
+      );
+    }
+
+    // Clean and parse JSON response
+    const cleanedText = rawText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+    const parsed = JSON.parse(cleanedText);
+
+    const isNonReturnable = Boolean(parsed.is_non_returnable);
+    const purchaseDate = parsed.purchase_date || new Date().toISOString().split('T')[0];
+    const retailerName = parsed.retailer_name || 'Retailer';
+
+    const calculated = calculateDeadlines({
+      purchaseDate,
+      retailerName,
+    });
+
+    const extracted: ExtractedReceipt = {
+      retailer_name: retailerName,
+      product_name: parsed.product_name || parsed.items?.[0]?.name || 'Purchased Item',
+      order_id: parsed.order_id || null,
+      purchase_date: purchaseDate,
+      total: Number(parsed.total) || 0,
+      subtotal: Number(parsed.subtotal) || Number(parsed.total) || 0,
+      tax: Number(parsed.tax) || 0,
+      shipping: Number(parsed.shipping) || 0,
+      currency: parsed.currency || 'INR',
+      return_deadline: isNonReturnable ? null : calculated.returnDeadline.toISOString().split('T')[0],
+      warranty_deadline: isNonReturnable ? null : calculated.warrantyDeadline.toISOString().split('T')[0],
+      is_non_returnable: isNonReturnable,
+      confidence: 0.95,
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+    };
 
     return NextResponse.json({
       success: true,
@@ -213,6 +244,7 @@ Set is_non_returnable to true if this document is a utility bill (electricity, w
       fileName: originalName,
     });
   } catch (err: any) {
+    console.error('OCR Route unhandled error:', err);
     return NextResponse.json(
       { error: err.message || 'Receipt OCR extraction failed' },
       { status: 500 }

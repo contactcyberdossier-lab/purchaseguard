@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
+import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -43,10 +44,11 @@ export default async function DashboardLayout({
       />
       <div className="flex flex-1">
         <DashboardSidebar locale={locale} isAdmin={isAdmin} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full pb-24 lg:pb-8">
           {children}
         </main>
       </div>
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }

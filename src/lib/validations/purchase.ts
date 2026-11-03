@@ -38,6 +38,7 @@ export const purchaseSchema = z.object({
   return_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).nullable(),
   warranty_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).nullable(),
   is_non_returnable: z.boolean().optional().default(false),
+  receipt_url: z.string().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
   items: z.array(purchaseItemSchema).optional().default([]),
 });

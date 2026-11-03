@@ -40,6 +40,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
   const [warrantyPolicyNumber, setWarrantyPolicyNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [detectedPolicyNote, setDetectedPolicyNote] = useState<string | null>(null);
+  const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(null);
 
   const [items, setItems] = useState<{ name: string; quantity: number; unit_price: number; total_price: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +128,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setWarrantyProvider('');
     setWarrantyPolicyNumber('');
     setNotes('');
+    setUploadedReceiptUrl(null);
     setItems([]);
     setError(null);
   };
@@ -151,6 +153,65 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setItems(updated);
   };
 
+  const compressImageForUpload = async (file: File): Promise<File> => {
+    // Only compress images, pass PDFs or small files as-is
+    if (file.type === 'application/pdf' || file.size < 500 * 1024) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const safeName = file.name.replace(/\.[^/.]+$/, '.jpg');
+                  const compressed = new File([blob], safeName, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressed);
+                } else {
+                  resolve(file);
+                }
+              },
+              'image/jpeg',
+              0.85
+            );
+          } else {
+            resolve(file);
+          }
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -160,8 +221,9 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setScanSuccess(null);
 
     try {
+      const uploadFile = await compressImageForUpload(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
 
       const res = await fetch('/api/ocr/scan', {
         method: 'POST',
@@ -169,6 +231,9 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
       });
 
       const data = await res.json();
+      if (data.receiptUrl) {
+        setUploadedReceiptUrl(data.receiptUrl);
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to scan receipt');
 
       const ext = data.extracted;
@@ -239,6 +304,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
         warranty_deadline: calculatedWarrantyDate || undefined,
         custom_return_days: isNonReturnable ? 0 : (returnDays ? Number(returnDays) : undefined),
         is_non_returnable: isNonReturnable,
+        receipt_url: uploadedReceiptUrl || undefined,
         notes: finalNotes || undefined,
         items,
       };
@@ -310,36 +376,62 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
                     <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">AUTO-FILL</span>
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    Take a photo with your mobile camera or upload an image/PDF.
+                    Take a photo with your mobile camera or pick a receipt/bill image or PDF.
                   </p>
                 </div>
               </div>
 
-              <label className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-all shadow-sm shrink-0">
-                {isScanning ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Extracting Details...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="w-4 h-4" />
-                    <span>Take Photo / Upload</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  capture="environment"
-                  disabled={isScanning}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Take Photo with Mobile Camera */}
+                <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-all shadow-sm">
+                  {isScanning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Reading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Camera</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    disabled={isScanning}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Browse Files or Gallery */}
+                <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-card border border-border text-foreground hover:bg-accent cursor-pointer transition-all shadow-sm">
+                  <UploadCloud className="w-3.5 h-3.5 text-primary" />
+                  <span>Gallery / PDF</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    disabled={isScanning}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
 
+            {uploadedReceiptUrl && (
+              <div className="mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-foreground flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-medium truncate max-w-[280px]">Receipt image attached to vault</span>
+                </div>
+                <span className="text-[10px] uppercase font-mono text-primary font-bold">READY</span>
+              </div>
+            )}
+
             {scanSuccess && (
-              <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+              <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{scanSuccess}</span>
               </div>

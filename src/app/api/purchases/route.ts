@@ -200,6 +200,21 @@ export async function POST(request: NextRequest) {
       await supabase.from('purchase_items').insert(itemsToInsert);
     }
 
+    // Attach receipt image if uploaded via OCR
+    if (input.receipt_url) {
+      try {
+        await supabase.from('attachments').insert({
+          purchase_id: purchase.id,
+          file_name: input.product_name ? `${input.product_name} Receipt` : 'Receipt',
+          file_url: input.receipt_url,
+          file_type: 'image/jpeg',
+          file_size_bytes: 0,
+        });
+      } catch (attErr) {
+        console.warn('Attachment linking non-blocking warning:', attErr);
+      }
+    }
+
     // Sync automated reminder schedules safely
     try {
       await syncPurchaseReminders(
