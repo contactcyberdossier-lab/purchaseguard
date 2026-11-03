@@ -157,6 +157,21 @@ export function detectKnownRetailer(senderEmail: string, subject: string, bodyTe
   if (sender.includes('costco') || text.includes('costco.com')) {
     return { retailerName: 'Costco', retailerDomain: 'costco.com', confidence: 0.95 };
   }
+  if (sender.includes('flipkart') || text.includes('flipkart.com')) {
+    return { retailerName: 'Flipkart', retailerDomain: 'flipkart.com', confidence: 0.98 };
+  }
+  if (sender.includes('myntra') || text.includes('myntra.com')) {
+    return { retailerName: 'Myntra', retailerDomain: 'myntra.com', confidence: 0.98 };
+  }
+  if (sender.includes('samsung') || text.includes('samsung.com')) {
+    return { retailerName: 'Samsung', retailerDomain: 'samsung.com', confidence: 0.96 };
+  }
+  if (sender.includes('nike') || text.includes('nike.com')) {
+    return { retailerName: 'Nike', retailerDomain: 'nike.com', confidence: 0.95 };
+  }
+  if (sender.includes('zara') || text.includes('zara.com')) {
+    return { retailerName: 'Zara', retailerDomain: 'zara.com', confidence: 0.95 };
+  }
   if (sender.includes('shopify') || text.includes('shopify.com') || text.includes('powered by shopify')) {
     // Extract domain from sender
     const domainMatch = sender.match(/@([a-z0-9.-]+\.[a-z]{2,})/);
