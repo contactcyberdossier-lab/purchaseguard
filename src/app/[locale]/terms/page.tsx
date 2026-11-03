@@ -40,7 +40,7 @@ export default function TermsPage({ params: { locale } }: TermsPageProps) {
             <span>Important Claims Policy & Product Scope</span>
           </div>
           <p className="font-semibold text-foreground">
-            “PurchaseGuard helps you track purchases and prepare return, refund, warranty, and price-match requests. The retailer or manufacturer makes the final decision.”
+            “PurchaseGuard helps you track purchases and prepare return, refund, and warranty requests. The retailer or manufacturer makes the final decision.”
           </p>
           <p className="mt-1">
             PurchaseGuard is an administrative organization and deadline tracking tool. PurchaseGuard does NOT guarantee retailer refunds, recovered money, warranty approval, or price-drop adjustments. All return approvals, refund disbursements, and warranty determinations remain exclusively subject to third-party merchant and manufacturer terms.

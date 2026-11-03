@@ -121,7 +121,7 @@ export function buildReturnDeadlineAlertHtml({
     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
     
     <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
-      <strong>Notice:</strong> PurchaseGuard helps you track purchases and prepare return, refund, warranty, and price-match requests. The retailer or manufacturer makes the final decision based on their terms of sale.
+      <strong>Notice:</strong> PurchaseGuard helps you track purchases and prepare return, refund, and warranty requests. The retailer or manufacturer makes the final decision based on their terms of sale.
     </p>
   </div>
 </body>

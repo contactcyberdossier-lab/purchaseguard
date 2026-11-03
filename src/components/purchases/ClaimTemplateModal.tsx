@@ -22,7 +22,7 @@ interface ClaimTemplateModalProps {
   userName?: string;
 }
 
-type TemplateType = 'return' | 'refund' | 'warranty' | 'price_match' | 'delayed_refund';
+type TemplateType = 'return' | 'refund' | 'warranty' | 'damaged_item' | 'delayed_refund';
 
 export function ClaimTemplateModal({
   isOpen,
@@ -101,16 +101,21 @@ ${userName}
 ---
 [Notice: Generated via PurchaseGuard. PurchaseGuard helps prepare requests. The retailer or manufacturer makes the final decision.]`;
 
-      case 'price_match':
-        return `Subject: Price-Match Request - ${subjectPrefix} ${purchase.product_name}
+      case 'damaged_item':
+        return `Subject: Replacement Request: Damaged / Defective Item - ${subjectPrefix} ${purchase.product_name}
 
-Dear ${purchase.retailer_name} Support,
+Dear ${purchase.retailer_name} Support Team,
 
-I recently purchased ${purchase.product_name} on ${purchase.purchase_date} (Order #${purchase.order_id || '[Not Specified]'}) for ${purchase.currency} ${purchase.total}.
+I recently received my order #${purchase.order_id || '[Not Specified]'} (${purchase.product_name}) delivered on ${purchase.purchase_date}. 
 
-I noticed a price drop on your store / authorized competitor to [Enter New Price]. In accordance with your price adjustment policy, could you please credit the difference to my original payment method?
+Upon opening the package, I discovered that the item is damaged / defective:
+- Description of issue: ${reason}
 
-Thank you for your assistance,
+Since this occurred prior to or during delivery, I would appreciate a prompt replacement unit or full refund. I have photos of the damaged item and packaging ready to provide upon request.
+
+Please send instructions for returning the damaged merchandise or processing the replacement.
+
+Thank you,
 ${userName}
 
 ---
@@ -163,7 +168,7 @@ ${userName}
             { id: 'return', label: 'Return Request' },
             { id: 'refund', label: 'Refund Request' },
             { id: 'warranty', label: 'Warranty Claim' },
-            { id: 'price_match', label: 'Price-Match' },
+            { id: 'damaged_item', label: 'Damaged / Replacement' },
             { id: 'delayed_refund', label: 'Delayed Refund Follow-Up' },
           ].map((t) => (
             <button

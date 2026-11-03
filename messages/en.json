@@ -21,7 +21,7 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "success": "Success",
-    "disclaimer": "PurchaseGuard helps you track purchases and prepare return, refund, warranty, and price-match requests. The retailer or manufacturer makes the final decision."
+    "disclaimer": "PurchaseGuard helps you track purchases and prepare return, refund, and warranty requests. The retailer or manufacturer makes the final decision."
   },
   "nav": {
     "features": "Features",
@@ -41,7 +41,7 @@
     "reassurance": "No credit card required • Connects via read-only OAuth"
   },
   "claims": {
-    "approvedStatement": "PurchaseGuard helps you track purchases and prepare return, refund, warranty, and price-match requests. The retailer or manufacturer makes the final decision.",
+    "approvedStatement": "PurchaseGuard helps you track purchases and prepare return, refund, and warranty requests. The retailer or manufacturer makes the final decision.",
     "decisionNotice": "All return approvals, warranty claims, and refund disbursements remain subject to the terms and discretion of the third-party merchant."
   },
   "howItWorks": {
