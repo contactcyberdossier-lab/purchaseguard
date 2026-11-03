@@ -102,6 +102,31 @@ export async function POST(request: NextRequest) {
 
     const input = parsed.data;
 
+    // Subscription Tier Enforcement: Free users are limited to 5 tracked purchases
+    const { data: profile } = await supabase
+      .from('users')
+      .select('subscription_status')
+      .eq('id', user.id)
+      .single();
+
+    const isPremium = profile?.subscription_status === 'plus' || profile?.subscription_status === 'annual';
+    if (!isPremium) {
+      const { count, error: countError } = await supabase
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (!countError && typeof count === 'number' && count >= 5) {
+        return NextResponse.json(
+          {
+            error: 'Free plan limit reached (5 tracked purchases). Upgrade to PurchaseGuard Plus for unlimited tracking!',
+            upgradeRequired: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Calculate deadlines if not explicitly provided
     let returnDeadlineStr = input.return_deadline;
     let warrantyDeadlineStr = input.warranty_deadline;
