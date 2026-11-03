@@ -70,12 +70,9 @@ export function PricingTable({ currentPlanId, locale }: PricingTableProps) {
 
       const data = await res.json();
       if (res.ok && data.url) {
-        if (data.url.includes('lemonsqueezy.com') && (window as any).LemonSqueezy) {
-          (window as any).createLemonSqueezy?.();
-          (window as any).LemonSqueezy.Url.Open(data.url);
-        } else {
-          window.location.href = data.url;
-        }
+        // Customer portal (Lemon Squeezy order/subscription manager or Stripe portal)
+        // should always open directly in a new tab or browser window
+        window.open(data.url, '_blank') || (window.location.href = data.url);
       } else {
         alert(data.error || 'Failed to open billing portal');
       }

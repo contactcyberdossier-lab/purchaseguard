@@ -35,6 +35,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
   const [warrantyMonths, setWarrantyMonths] = useState<number | ''>(12);
   const [calculatedReturnDate, setCalculatedReturnDate] = useState('');
   const [calculatedWarrantyDate, setCalculatedWarrantyDate] = useState('');
+  const [isNonReturnable, setIsNonReturnable] = useState(false);
   const [notes, setNotes] = useState('');
   const [detectedPolicyNote, setDetectedPolicyNote] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
       setTotal(String(initialData.total ?? ''));
       setCalculatedReturnDate(initialData.return_deadline || '');
       setCalculatedWarrantyDate(initialData.warranty_deadline || '');
+      setIsNonReturnable(!initialData.return_deadline);
       setNotes(initialData.notes || '');
       if (initialData.purchase_items) {
         setItems(initialData.purchase_items);
@@ -72,6 +74,11 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
   // Recalculate deadlines on changes
   useEffect(() => {
     if (!purchaseDate) return;
+
+    if (isNonReturnable) {
+      setCalculatedReturnDate('');
+      return;
+    }
 
     const policy = matchRetailerPolicy(retailerName);
     if (policy) {
@@ -89,7 +96,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
 
     setCalculatedReturnDate(calculated.returnDeadline.toISOString().split('T')[0]);
     setCalculatedWarrantyDate(calculated.warrantyDeadline.toISOString().split('T')[0]);
-  }, [retailerName, purchaseDate, returnDays, warrantyMonths]);
+  }, [retailerName, purchaseDate, returnDays, warrantyMonths, isNonReturnable]);
 
   // Recalculate total from subtotal + tax + shipping if user edits subparts
   const handleSubtotalChange = (val: string) => {
@@ -114,6 +121,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setTotal('');
     setReturnDays('');
     setWarrantyMonths(12);
+    setIsNonReturnable(false);
     setNotes('');
     setItems([]);
     setError(null);
@@ -171,7 +179,13 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
         if (ext.tax) setTax(String(ext.tax));
         if (ext.shipping) setShipping(String(ext.shipping));
         if (ext.items && ext.items.length > 0) setItems(ext.items);
-        if (ext.return_deadline) setCalculatedReturnDate(ext.return_deadline);
+        if (ext.is_non_returnable) {
+          setIsNonReturnable(true);
+          setCalculatedReturnDate('');
+        } else {
+          setIsNonReturnable(false);
+          if (ext.return_deadline) setCalculatedReturnDate(ext.return_deadline);
+        }
         if (ext.warranty_deadline) setCalculatedWarrantyDate(ext.warranty_deadline);
 
         setScanSuccess(`Extracted details from ${ext.retailer_name || 'receipt'}! Verify information below.`);
@@ -209,8 +223,10 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
         tax: parseFloat(tax) || 0,
         shipping: parseFloat(shipping) || 0,
         total: numericTotal,
-        return_deadline: calculatedReturnDate || undefined,
+        return_deadline: isNonReturnable ? null : (calculatedReturnDate || undefined),
         warranty_deadline: calculatedWarrantyDate || undefined,
+        custom_return_days: isNonReturnable ? 0 : (returnDays ? Number(returnDays) : undefined),
+        is_non_returnable: isNonReturnable,
         notes: notes || undefined,
         items,
       };
@@ -487,6 +503,31 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
             </div>
           </div>
 
+          {/* Non-returnable / Bill Payment Option */}
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-muted/40 border border-border">
+            <input
+              type="checkbox"
+              id="is_non_returnable"
+              checked={isNonReturnable}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setIsNonReturnable(checked);
+                if (checked) {
+                  setCalculatedReturnDate('');
+                }
+              }}
+              className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary border-input cursor-pointer"
+            />
+            <label htmlFor="is_non_returnable" className="text-xs text-foreground cursor-pointer select-none">
+              <span className="font-semibold text-foreground block">
+                Non-returnable order / Digital service / Bill payment
+              </span>
+              <span className="text-muted-foreground block text-[11px] mt-0.5">
+                Check this for utility bills (electricity, water, broadband), mobile recharges, food orders, or digital gift cards. Preserves the receipt in your vault without triggering return countdown alerts.
+              </span>
+            </label>
+          </div>
+
           {/* Deadlines Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-card">
             <div>
@@ -495,15 +536,21 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
                   Return Deadline
                 </label>
                 <span className="text-[11px] text-muted-foreground">
-                  {returnDays ? `${returnDays} days` : 'Auto'}
+                  {isNonReturnable ? 'None' : returnDays ? `${returnDays} days` : 'Auto'}
                 </span>
               </div>
-              <input
-                type="date"
-                value={calculatedReturnDate}
-                onChange={(e) => setCalculatedReturnDate(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground"
-              />
+              {isNonReturnable ? (
+                <div className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground italic">
+                  Non-returnable (Receipt & expense tracking only)
+                </div>
+              ) : (
+                <input
+                  type="date"
+                  value={calculatedReturnDate}
+                  onChange={(e) => setCalculatedReturnDate(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground"
+                />
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">

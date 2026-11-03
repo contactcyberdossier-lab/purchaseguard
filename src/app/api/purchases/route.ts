@@ -128,23 +128,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate deadlines if not explicitly provided
-    let returnDeadlineStr = input.return_deadline;
-    let warrantyDeadlineStr = input.warranty_deadline;
+    const isNonReturnable =
+      input.is_non_returnable === true ||
+      input.custom_return_days === 0 ||
+      input.return_deadline === null;
 
-    if (!returnDeadlineStr || !warrantyDeadlineStr) {
+    let returnDeadlineStr: string | null = isNonReturnable ? null : (input.return_deadline || null);
+    let warrantyDeadlineStr: string | null = input.warranty_deadline || null;
+
+    if (!isNonReturnable && !returnDeadlineStr) {
       const calculated = calculateDeadlines({
         purchaseDate: input.purchase_date,
         retailerName: input.retailer_name,
         customReturnDays: input.custom_return_days,
         customWarrantyMonths: input.custom_warranty_months,
       });
+      returnDeadlineStr = calculated.returnDeadline.toISOString().split('T')[0];
+    }
 
-      if (!returnDeadlineStr) {
-        returnDeadlineStr = calculated.returnDeadline.toISOString().split('T')[0];
-      }
-      if (!warrantyDeadlineStr) {
-        warrantyDeadlineStr = calculated.warrantyDeadline.toISOString().split('T')[0];
-      }
+    if (!warrantyDeadlineStr && input.custom_warranty_months !== 0) {
+      const calculated = calculateDeadlines({
+        purchaseDate: input.purchase_date,
+        retailerName: input.retailer_name,
+        customReturnDays: input.custom_return_days,
+        customWarrantyMonths: input.custom_warranty_months,
+      });
+      warrantyDeadlineStr = calculated.warrantyDeadline.toISOString().split('T')[0];
     }
 
     // Insert purchase record

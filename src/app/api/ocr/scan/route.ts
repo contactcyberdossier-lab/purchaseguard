@@ -18,8 +18,9 @@ interface ExtractedReceipt {
   tax: number;
   shipping: number;
   currency: string;
-  return_deadline: string;
-  warranty_deadline: string;
+  return_deadline: string | null;
+  warranty_deadline: string | null;
+  is_non_returnable?: boolean;
   confidence: number;
   items: Array<{
     name: string;
@@ -81,10 +82,10 @@ export async function POST(request: NextRequest) {
           binary += String.fromCharCode(bytes[i]);
         }
         const base64Data = btoa(binary);
-        const prompt = `Analyze this purchase receipt or invoice. Extract the following fields as strict JSON without markdown formatting:
+        const prompt = `Analyze this purchase receipt, utility bill, or payment invoice. Extract the following fields as strict JSON without markdown formatting:
 {
-  "retailer_name": "Store/Retailer name",
-  "product_name": "Primary item or general description",
+  "retailer_name": "Store/Retailer/Provider name (e.g. Amazon, Best Buy, Verizon, PG&E)",
+  "product_name": "Primary item, service description, or bill payment description",
   "order_id": "Order or invoice number, or null",
   "purchase_date": "YYYY-MM-DD",
   "total": 0.00,
@@ -92,10 +93,14 @@ export async function POST(request: NextRequest) {
   "tax": 0.00,
   "shipping": 0.00,
   "currency": "USD",
+  "is_non_returnable": false,
   "items": [
-    { "name": "Item name", "quantity": 1, "unit_price": 0.00, "total_price": 0.00 }
+    { "name": "Item or fee description", "quantity": 1, "unit_price": 0.00, "total_price": 0.00 }
   ]
-}`;
+}
+
+Classification rule for is_non_returnable:
+Set is_non_returnable to true if this document is a utility bill (electricity, water, gas, internet/cable), mobile recharge, food/restaurant receipt, digital gift card, or software subscription. Set is_non_returnable to false for physical merchandise that can be returned or exchanged.`;
 
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
@@ -129,6 +134,7 @@ export async function POST(request: NextRequest) {
           const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) {
             const parsed = JSON.parse(rawText);
+            const isNonReturnable = Boolean(parsed.is_non_returnable);
             const calculated = calculateDeadlines({
               purchaseDate: parsed.purchase_date || new Date().toISOString().split('T')[0],
               retailerName: parsed.retailer_name || 'Retailer',
@@ -144,8 +150,9 @@ export async function POST(request: NextRequest) {
               tax: Number(parsed.tax) || 0,
               shipping: Number(parsed.shipping) || 0,
               currency: parsed.currency || 'USD',
-              return_deadline: calculated.returnDeadline.toISOString().split('T')[0],
-              warranty_deadline: calculated.warrantyDeadline.toISOString().split('T')[0],
+              return_deadline: isNonReturnable ? null : calculated.returnDeadline.toISOString().split('T')[0],
+              warranty_deadline: isNonReturnable ? null : calculated.warrantyDeadline.toISOString().split('T')[0],
+              is_non_returnable: isNonReturnable,
               confidence: 0.95,
               items: parsed.items || [],
             };
