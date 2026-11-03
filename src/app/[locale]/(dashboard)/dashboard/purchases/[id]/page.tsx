@@ -256,10 +256,15 @@ export default function PurchaseDetailPage({ params: { locale, id } }: PurchaseD
             </div>
             <div className="flex justify-between py-1 border-b border-border">
               <span className="text-muted-foreground">Coverage Type:</span>
-              <span className="font-semibold text-foreground">Manufacturer Warranty</span>
+              <span className="font-semibold text-foreground">
+                {purchase.warranty_deadline &&
+                new Date(purchase.warranty_deadline).getTime() - new Date(purchase.purchase_date).getTime() > 390 * 24 * 3600 * 1000
+                  ? 'Extended Warranty / Protection Plan'
+                  : 'Standard Manufacturer Warranty'}
+              </span>
             </div>
             <p className="text-[11px] text-muted-foreground pt-1">
-              You will receive an alert 30 days before manufacturer coverage expires.
+              You will receive an alert 30 days before coverage expires.
             </p>
           </CardContent>
         </Card>

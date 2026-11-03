@@ -567,6 +567,29 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
                 onChange={(e) => setCalculatedWarrantyDate(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground"
               />
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                {[12, 24, 36, 60].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setWarrantyMonths(m);
+                      if (purchaseDate) {
+                        const d = new Date(purchaseDate);
+                        d.setUTCMonth(d.getUTCMonth() + m);
+                        setCalculatedWarrantyDate(d.toISOString().split('T')[0]);
+                      }
+                    }}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                      warrantyMonths === m
+                        ? 'bg-primary text-primary-foreground border-primary font-bold'
+                        : 'bg-muted/60 text-muted-foreground border-border hover:bg-accent'
+                    }`}
+                  >
+                    {m === 12 ? '1 Yr (Std)' : `${m / 12} Yrs (${m > 12 ? `+${(m - 12) / 12}y Ext` : ''})`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
