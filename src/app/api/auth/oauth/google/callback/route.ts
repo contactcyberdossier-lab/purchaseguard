@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ========================================================
 // API Route: /api/auth/oauth/google/callback (Gmail Callback)
@@ -28,7 +28,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { userId } = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+    let rawState = '';
+    try {
+      rawState = Buffer.from(state, 'base64url').toString('utf8');
+    } catch {
+      rawState = Buffer.from(state.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    }
+    const { userId } = JSON.parse(rawState);
     if (userId !== user.id) {
       return NextResponse.redirect(`${origin}/${defaultLocale}/dashboard?error=state_mismatch`);
     }
