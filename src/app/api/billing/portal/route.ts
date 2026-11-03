@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.stripe_customer_id) {
-      return NextResponse.json(
-        { error: 'No active Stripe customer billing profile found' },
-        { status: 400 }
-      );
+      // For Lemon Squeezy subscribers or external billing, direct to Lemon Squeezy Customer Order Portal
+      return NextResponse.json({
+        url: 'https://app.lemonsqueezy.com/my-orders',
+      });
     }
 
     const stripe = getStripeClient();
