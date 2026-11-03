@@ -211,7 +211,7 @@ export function formatWhatsAppReturnAlert({
   return `${urgencyEmoji} *PurchaseGuard Return Reminder*\n\n` +
     `You have *${daysLeft} day${daysLeft === 1 ? '' : 's'} left* to return your *${productName}* from *${retailerName}*.\n\n` +
     `📅 *Return Deadline:* ${returnDeadline}\n\n` +
-    `👉 *Prepare your return or refund letter here:*\n${dashboardUrl}\n\n` +
+    `👉 *View purchase details in your dashboard:*\n${dashboardUrl}\n\n` +
     `_Retailers make final return determinations based on their policy._`;
 }
 

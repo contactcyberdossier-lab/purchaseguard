@@ -114,7 +114,7 @@ export function buildReturnDeadlineAlertHtml({
 
     <div style="text-align: center; margin: 32px 0;">
       <a href="${dashboardUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">
-        Prepare Return Request in PurchaseGuard
+        View Purchase in Dashboard
       </a>
     </div>
 
