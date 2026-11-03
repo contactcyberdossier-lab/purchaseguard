@@ -6,9 +6,10 @@ import { encryptToken, decryptToken } from '../security';
 
 const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
-export function getGoogleAuthUrl(state: string): string {
+export function getGoogleAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://purchaseguard.app/api/auth/oauth/google/callback';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${baseUrl}/api/auth/oauth/google/callback`;
 
   if (!clientId) {
     throw new Error('GOOGLE_CLIENT_ID is not configured');
@@ -27,15 +28,20 @@ export function getGoogleAuthUrl(state: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
-export async function exchangeGoogleCodeForTokens(code: string): Promise<{
+export async function exchangeGoogleCodeForTokens(code: string, requestOrigin?: string): Promise<{
   accessTokenEncrypted: string;
   refreshTokenEncrypted: string;
   expiresInSeconds: number;
   emailAddress: string;
 }> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://purchaseguard.app/api/auth/oauth/google/callback';
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${baseUrl}/api/auth/oauth/google/callback`;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Google OAuth credentials (GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET) are missing');
+  }
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',

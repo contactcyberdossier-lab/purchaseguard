@@ -1,5 +1,6 @@
 export const runtime = 'edge';
 
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
@@ -82,7 +83,9 @@ export default async function DashboardPage({ params: { locale } }: DashboardPag
       <RecentPurchasesList locale={locale} purchases={purchases} />
 
       {/* Email Sync & Connection Management */}
-      <EmailConnectionsCard userEmail={user.email} />
+      <Suspense fallback={null}>
+        <EmailConnectionsCard userEmail={user.email} />
+      </Suspense>
     </div>
   );
 }

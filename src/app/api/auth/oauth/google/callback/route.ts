@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { accessTokenEncrypted, refreshTokenEncrypted, expiresInSeconds, emailAddress } =
-      await exchangeGoogleCodeForTokens(code);
+      await exchangeGoogleCodeForTokens(code, origin);
 
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 

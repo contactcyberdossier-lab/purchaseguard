@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ========================================================
 // API Route: /api/auth/oauth/google (Initiate Gmail Connect)
@@ -14,14 +14,39 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const origin =
+    request.nextUrl.origin ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'https://purchaseguard-six.vercel.app';
+
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.redirect(`${origin}/en/login`);
   }
 
-  // Generate random state encoded with user ID for CSRF verification
-  const random = crypto.randomUUID().replace(/-/g, '');
-  const state = btoa(JSON.stringify({ userId: user.id, random })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const clientId = process.env.GOOGLE_CLIENT_ID;
 
-  const authUrl = getGoogleAuthUrl(state);
-  return NextResponse.redirect(authUrl);
+  // If OAuth Client credentials are not configured, redirect back gracefully with an informative message
+  if (!clientId) {
+    return NextResponse.redirect(
+      `${origin}/en/dashboard?error=gmail_oauth_missing_credentials#email-sync`
+    );
+  }
+
+  try {
+    // Generate random state encoded with user ID for CSRF verification
+    const random = crypto.randomUUID().replace(/-/g, '');
+    const state = Buffer.from(JSON.stringify({ userId: user.id, random }))
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const authUrl = getGoogleAuthUrl(state, origin);
+    return NextResponse.redirect(authUrl);
+  } catch (err: any) {
+    console.error('Google OAuth initialization error:', err);
+    return NextResponse.redirect(
+      `${origin}/en/dashboard?error=${encodeURIComponent(err.message || 'gmail_auth_failed')}#email-sync`
+    );
+  }
 }

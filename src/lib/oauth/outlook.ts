@@ -6,9 +6,10 @@ import { encryptToken, decryptToken } from '../security';
 
 const OUTLOOK_SCOPES = 'Mail.Read offline_access User.Read';
 
-export function getMicrosoftAuthUrl(state: string): string {
+export function getMicrosoftAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
-  const redirectUri = process.env.MICROSOFT_REDIRECT_URI || 'https://purchaseguard.app/api/auth/oauth/microsoft/callback';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const redirectUri = process.env.MICROSOFT_REDIRECT_URI || `${baseUrl}/api/auth/oauth/microsoft/callback`;
 
   if (!clientId) {
     throw new Error('MICROSOFT_CLIENT_ID is not configured');
@@ -26,15 +27,20 @@ export function getMicrosoftAuthUrl(state: string): string {
   return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;
 }
 
-export async function exchangeMicrosoftCodeForTokens(code: string): Promise<{
+export async function exchangeMicrosoftCodeForTokens(code: string, requestOrigin?: string): Promise<{
   accessTokenEncrypted: string;
   refreshTokenEncrypted: string;
   expiresInSeconds: number;
   emailAddress: string;
 }> {
-  const clientId = process.env.MICROSOFT_CLIENT_ID!;
-  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET!;
-  const redirectUri = process.env.MICROSOFT_REDIRECT_URI || 'https://purchaseguard.app/api/auth/oauth/microsoft/callback';
+  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const redirectUri = process.env.MICROSOFT_REDIRECT_URI || `${baseUrl}/api/auth/oauth/microsoft/callback`;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Microsoft OAuth credentials (MICROSOFT_CLIENT_ID or MICROSOFT_CLIENT_SECRET) are missing');
+  }
 
   const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
     method: 'POST',

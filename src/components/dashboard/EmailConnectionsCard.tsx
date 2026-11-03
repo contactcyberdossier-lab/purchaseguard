@@ -5,7 +5,20 @@
 // ========================================================
 
 import { useState, useEffect } from 'react';
-import { Mail, ShieldCheck, Check, Unlink, Trash2, Copy, AlertCircle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import {
+  Mail,
+  ShieldCheck,
+  Check,
+  Unlink,
+  Trash2,
+  Copy,
+  AlertCircle,
+  HelpCircle,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
@@ -17,9 +30,14 @@ interface EmailConnection {
 }
 
 export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
+  const statusParam = searchParams.get('status');
+
   const [connections, setConnections] = useState<EmailConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedForwarding, setCopiedForwarding] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   const fetchConnections = async () => {
     setIsLoading(true);
@@ -70,7 +88,73 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
           </span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5">
+        {/* Connection Status Alerts */}
+        {statusParam === 'gmail_connected' && (
+          <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <span className="font-semibold">Gmail connected successfully! PurchaseGuard will automatically monitor incoming purchase receipts.</span>
+          </div>
+        )}
+
+        {errorParam === 'gmail_oauth_missing_credentials' && (
+          <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-bold">Google Cloud OAuth Credentials Required</p>
+                <p className="text-[11px] mt-0.5 leading-relaxed">
+                  To connect your Gmail inbox directly via Google OAuth, you need to add <code className="bg-amber-500/20 px-1 py-0.5 rounded font-mono">GOOGLE_CLIENT_ID</code> and <code className="bg-amber-500/20 px-1 py-0.5 rounded font-mono">GOOGLE_CLIENT_SECRET</code> to your Vercel Project Environment Variables.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSetupGuide(!showSetupGuide)}
+              className="text-[11px] font-semibold underline flex items-center gap-1 hover:text-amber-800 dark:hover:text-amber-300"
+            >
+              <span>{showSetupGuide ? 'Hide Setup Steps' : 'View Quick 2-Minute Setup Steps'}</span>
+              {showSetupGuide ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
+        )}
+
+        {/* Collapsible Google OAuth Setup Steps */}
+        {showSetupGuide && (
+          <div className="p-4 rounded-xl border border-border bg-muted/30 text-xs space-y-3">
+            <h5 className="font-bold text-foreground">How to configure Google Cloud OAuth:</h5>
+            <ol className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+              <li>
+                Open the{' '}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline font-medium inline-flex items-center gap-0.5"
+                >
+                  Google Cloud Credentials Console <ExternalLink className="w-3 h-3 inline" />
+                </a>{' '}
+                under your existing project.
+              </li>
+              <li>
+                Click <strong>Create Credentials</strong> &gt; <strong>OAuth client ID</strong> &gt; select <strong>Web application</strong>.
+              </li>
+              <li>
+                In <strong>Authorized redirect URIs</strong>, enter:{' '}
+                <code className="bg-card px-1.5 py-0.5 rounded font-mono text-[10px] select-all border border-border">
+                  https://purchaseguard-six.vercel.app/api/auth/oauth/google/callback
+                </code>
+              </li>
+              <li>
+                Copy the generated <strong>Client ID</strong> and <strong>Client Secret</strong>.
+              </li>
+              <li>
+                Add them into Vercel Settings &gt; Environment Variables as <code className="font-mono">GOOGLE_CLIENT_ID</code> and <code className="font-mono">GOOGLE_CLIENT_SECRET</code>.
+              </li>
+            </ol>
+          </div>
+        )}
+
         {/* Explanation & Security Guarantee */}
         <div className="p-3.5 rounded-xl border border-border/80 bg-background text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
           <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -150,7 +234,7 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground py-2">
-              No email inboxes connected. Connect Gmail or Outlook above for automatic tracking.
+              No email inboxes connected. Connect Gmail or Outlook above, or use direct receipt scanning.
             </p>
           )}
         </div>
@@ -158,7 +242,7 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
         {/* Forwarding Option */}
         <div className="pt-4 border-t border-border">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-            Alternative: Forward Order Receipts
+            Instant Alternative: Forward Order Receipts
           </h4>
           <p className="text-xs text-muted-foreground mb-2">
             Forward your order confirmation emails directly from your registered email address to:
