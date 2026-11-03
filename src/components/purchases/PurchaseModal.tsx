@@ -5,7 +5,7 @@
 // ========================================================
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, AlertCircle, Plus, Trash2, Camera, UploadCloud, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Sparkles, AlertCircle, Plus, Trash2, Camera, UploadCloud, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { SUPPORTED_CURRENCIES, type PurchaseInput } from '@/lib/validations/purchase';
 import { calculateDeadlines, matchRetailerPolicy } from '@/lib/deadlines';
