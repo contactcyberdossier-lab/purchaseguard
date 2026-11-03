@@ -67,11 +67,31 @@ export async function POST(request: NextRequest) {
         case 'subscription_resumed':
         case 'subscription_unpaused':
         case 'subscription_payment_success':
-        case 'subscription_payment_recovered': {
+        case 'subscription_payment_recovered':
+        case 'subscription_plan_changed':
+        case 'subscription_updated': {
+          const variantName = (
+            payload.data?.attributes?.variant_name ||
+            payload.data?.attributes?.product_name ||
+            ''
+          ).toLowerCase();
+          const totalAmount =
+            (payload.data?.attributes?.total ||
+              payload.data?.attributes?.first_order_item?.price ||
+              500) / 100;
+
+          // Detect if user switched to Annual Plan vs Monthly Plan
+          const isAnnual =
+            variantName.includes('annual') ||
+            variantName.includes('year') ||
+            totalAmount >= 30;
+
+          const status = isAnnual ? 'annual' : 'plus';
+
           await supabase
             .from('users')
             .update({
-              subscription_status: 'plus',
+              subscription_status: status,
             })
             .eq('id', userId);
 
@@ -79,7 +99,7 @@ export async function POST(request: NextRequest) {
             user_id: userId,
             stripe_event_id: `ls_${payload.data?.id || Date.now()}`,
             event_type: eventName,
-            amount: (payload.data?.attributes?.total || 500) / 100,
+            amount: totalAmount,
             currency: 'USD',
           });
           break;
