@@ -26,7 +26,7 @@ export async function GET() {
     hostname = 'INVALID_URL';
   }
 
-  const hasWhatsappToken = Boolean(
+  let hasWhatsappToken = Boolean(
     process.env.WHATSAPP_CLOUD_ACCESS_TOKEN ||
     process.env.WHATSAPP_ACCESS_TOKEN ||
     process.env.WHATSAPP_TOKEN ||
@@ -37,12 +37,18 @@ export async function GET() {
     process.env.META_TOKEN ||
     process.env.ACCESS_TOKEN
   );
-  const hasWhatsappPhoneId = Boolean(
+  let hasWhatsappPhoneId = Boolean(
     process.env.WHATSAPP_PHONE_NUMBER_ID ||
     process.env.WHATSAPP_PHONE_ID ||
     process.env.PHONE_NUMBER_ID ||
     process.env.WHATSAPP_NUMBER_ID
   );
+
+  const rawPhone = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (rawPhone.startsWith('EAA')) {
+    hasWhatsappToken = true;
+    hasWhatsappPhoneId = true;
+  }
   const hasCallMeBot = Boolean(process.env.CALLMEBOT_API_KEY);
   const hasTwilio = Boolean(process.env.TWILIO_ACCOUNT_SID);
 
