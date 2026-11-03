@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
       switch (eventName) {
         case 'subscription_created':
         case 'order_created':
-        case 'subscription_resumed': {
+        case 'subscription_resumed':
+        case 'subscription_unpaused':
+        case 'subscription_payment_success':
+        case 'subscription_payment_recovered': {
           await supabase
             .from('users')
             .update({
@@ -83,7 +86,8 @@ export async function POST(request: NextRequest) {
         }
 
         case 'subscription_cancelled':
-        case 'subscription_expired': {
+        case 'subscription_expired':
+        case 'order_refunded': {
           await supabase
             .from('users')
             .update({
@@ -93,7 +97,8 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        case 'subscription_paused': {
+        case 'subscription_paused':
+        case 'subscription_payment_failed': {
           await supabase
             .from('users')
             .update({
