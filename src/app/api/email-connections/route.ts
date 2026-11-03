@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ========================================================
 // API Route: /api/email-connections (Manage Connected Accounts)
@@ -6,6 +6,7 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 
 export async function GET() {
   const supabase = createClient();
@@ -17,17 +18,20 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: connections, error } = await supabase
+  // Use service client to reliably read user's connections
+  const db = getServiceSupabase();
+  const { data: connections, error } = await db
     .from('email_connections')
     .select('id, provider, email_address, connected_at, token_expires_at')
     .eq('user_id', user.id)
-    .is('disconnected_at', null);
+    .is('disconnected_at', null)
+    .order('connected_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ connections });
+  return NextResponse.json({ connections: connections || [] });
 }
 
 export async function DELETE(request: NextRequest) {

@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 import { exchangeGoogleCodeForTokens } from '@/lib/oauth/gmail';
 import { syncUserEmailAccounts } from '@/lib/email/sync';
 import { defaultLocale } from '@/lib/i18n';
@@ -45,8 +46,21 @@ export async function GET(request: NextRequest) {
 
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
-    // Upsert into email_connections
-    await supabase.from('email_connections').upsert(
+    const adminDb = getServiceSupabase();
+
+    // Ensure user row exists in public.users to satisfy foreign key constraint
+    await adminDb.from('users').upsert(
+      {
+        id: user.id,
+        email: user.email || emailAddress,
+        full_name: user.user_metadata?.full_name || '',
+        subscription_status: 'free',
+      },
+      { onConflict: 'id' }
+    );
+
+    // Upsert into email_connections with adminDb to bypass RLS and guarantee persistence
+    const { error: upsertErr } = await adminDb.from('email_connections').upsert(
       {
         user_id: user.id,
         provider: 'gmail',
@@ -59,6 +73,13 @@ export async function GET(request: NextRequest) {
       },
       { onConflict: 'user_id,provider,email_address' }
     );
+
+    if (upsertErr) {
+      console.error('Email connection upsert error:', upsertErr);
+      return NextResponse.redirect(
+        `${origin}/${defaultLocale}/dashboard?error=${encodeURIComponent(upsertErr.message)}#email-sync`
+      );
+    }
 
     // Audit log
     await supabase.from('audit_logs').insert({
