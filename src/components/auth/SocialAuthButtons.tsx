@@ -11,9 +11,10 @@ import { getDictionary } from '@/lib/i18n';
 
 interface SocialAuthButtonsProps {
   locale: string;
+  onError?: (errorMessage: string) => void;
 }
 
-export function SocialAuthButtons({ locale }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({ locale, onError }: SocialAuthButtonsProps) {
   const dict = getDictionary(locale);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const supabase = createClient();
@@ -21,14 +22,23 @@ export function SocialAuthButtons({ locale }: SocialAuthButtonsProps) {
   const handleOAuth = async (provider: 'google' | 'apple') => {
     setIsLoading(provider);
     try {
-      await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
-    } catch {
+      if (error) {
+        setIsLoading(null);
+        onError?.(
+          error.message.includes('not enabled')
+            ? 'Google Sign-in is not enabled in Supabase yet. Please enable the Google provider in your Supabase Authentication settings.'
+            : error.message
+        );
+      }
+    } catch (err: any) {
       setIsLoading(null);
+      onError?.(err?.message || 'Authentication failed. Please try again.');
     }
   };
 

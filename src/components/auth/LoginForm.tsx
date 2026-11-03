@@ -93,7 +93,7 @@ export function LoginForm({ locale }: LoginFormProps) {
       )}
 
       {/* Social Logins */}
-      <SocialAuthButtons locale={locale} />
+      <SocialAuthButtons locale={locale} onError={(msg) => setError(msg)} />
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
