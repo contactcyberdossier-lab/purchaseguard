@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { exchangeGoogleCodeForTokens } from '@/lib/oauth/gmail';
+import { syncUserEmailAccounts } from '@/lib/email/sync';
 import { defaultLocale } from '@/lib/i18n';
 
 export async function GET(request: NextRequest) {
@@ -66,7 +67,22 @@ export async function GET(request: NextRequest) {
       metadata: { email: emailAddress },
     });
 
-    return NextResponse.redirect(`${origin}/${defaultLocale}/dashboard?status=gmail_connected`);
+    // Trigger initial automated sync for incoming receipts
+    let syncParams = '';
+    try {
+      const syncResult = await syncUserEmailAccounts(user.id);
+      if (syncResult.syncedCount > 0) {
+        syncParams = `&synced=${syncResult.syncedCount}`;
+      } else if (syncResult.error) {
+        syncParams = `&sync_error=${encodeURIComponent(syncResult.error)}`;
+      }
+    } catch (syncErr: any) {
+      console.warn('Initial sync warning:', syncErr);
+    }
+
+    return NextResponse.redirect(
+      `${origin}/${defaultLocale}/dashboard?status=gmail_connected${syncParams}#email-sync`
+    );
   } catch (err: any) {
     console.error('Google OAuth error:', err);
     return NextResponse.redirect(

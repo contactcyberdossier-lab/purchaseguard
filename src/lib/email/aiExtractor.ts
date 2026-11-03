@@ -140,25 +140,47 @@ export async function parseAndExtractEmail({
 
   // 2. Extract Order ID via regex
   let orderId: string | null = null;
-  const orderIdMatch = cleanedText.match(/order\s*(?:number|#|id|no\.?)\s*[:\-]?\s*([a-z0-9\-]{5,30})/i);
+  const orderIdMatch = cleanedText.match(
+    /(?:order\s*(?:number|#|id|no\.?)|order\s*id\s*is|order\s*details\s*for)\s*[:\-#]?\s*([a-z0-9\-]{5,35})/i
+  );
   if (orderIdMatch) {
     orderId = orderIdMatch[1];
+  } else {
+    // Check for Amazon order format: 123-1234567-1234567
+    const amazonOrderMatch = cleanedText.match(/\b\d{3}-\d{7}-\d{7}\b/);
+    if (amazonOrderMatch) {
+      orderId = amazonOrderMatch[0];
+    } else {
+      // Check for Flipkart format: OD123456789...
+      const fkMatch = cleanedText.match(/\bOD\d{14,22}\b/i);
+      if (fkMatch) {
+        orderId = fkMatch[0];
+      }
+    }
   }
 
   // 3. Extract Total Amount
   let total = 0;
   let currency: any = 'USD';
-  const totalMatch = cleanedText.match(/(?:total|amount\s*paid|grand\s*total)\s*[:\-]?\s*([$€£¥₹A-Z]{1,3})?\s*([\d,]+\.\d{2})/i);
+  const totalMatch = cleanedText.match(
+    /(?:total|amount\s*paid|grand\s*total|order\s*total|paid|invoice\s*amount)\s*[:\-]?\s*(?:(?:rs\.?|inr|usd|eur|gbp|aud|cad|[$€£¥₹])\s*)?([$€£¥₹])?\s*([\d,]+(?:\.\d{1,2})?)/i
+  );
   if (totalMatch) {
-    total = parseFloat(totalMatch[2].replace(/,/g, ''));
-    if (totalMatch[1]) {
-      const sym = totalMatch[1].trim();
-      if (sym === '$') currency = 'USD';
-      else if (sym === '€') currency = 'EUR';
-      else if (sym === '£') currency = 'GBP';
-      else if (sym === '₹') currency = 'INR';
-      else if (SUPPORTED_CURRENCIES.includes(sym as any)) currency = sym;
+    const rawVal = totalMatch[2]?.replace(/,/g, '');
+    if (rawVal && !isNaN(parseFloat(rawVal))) {
+      total = parseFloat(rawVal);
     }
+  }
+
+  // Detect currency from context
+  if (/[₹]|(?:rs\.?|inr)\b/i.test(cleanedText) || senderEmail.includes('.in')) {
+    currency = 'INR';
+  } else if (/[$]|\busd\b/i.test(cleanedText)) {
+    currency = 'USD';
+  } else if (/[€]|\beur\b/i.test(cleanedText)) {
+    currency = 'EUR';
+  } else if (/[£]|\bgbp\b/i.test(cleanedText)) {
+    currency = 'GBP';
   }
 
   // 4. Extract Tracking Number if available

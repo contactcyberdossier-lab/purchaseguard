@@ -5,7 +5,7 @@
 // ========================================================
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Mail,
   ShieldCheck,
@@ -18,6 +18,9 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
+  Loader2,
+  Inbox,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
@@ -30,12 +33,22 @@ interface EmailConnection {
 }
 
 export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
   const statusParam = searchParams.get('status');
+  const syncedParam = searchParams.get('synced');
+  const syncErrorParam = searchParams.get('sync_error');
 
   const [connections, setConnections] = useState<EmailConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<{
+    type: 'success' | 'info' | 'error';
+    text: string;
+  } | null>(null);
+
   const [copiedForwarding, setCopiedForwarding] = useState(false);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
 
@@ -55,6 +68,50 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
   useEffect(() => {
     fetchConnections();
   }, []);
+
+  const handleSync = async (connectionId?: string) => {
+    setIsSyncing(true);
+    setSyncingId(connectionId || 'all');
+    setSyncMessage(null);
+
+    try {
+      const res = await fetch('/api/email-connections/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.syncedCount > 0) {
+          setSyncMessage({
+            type: 'success',
+            text: `Success! Synced ${data.syncedCount} new purchase receipt${data.syncedCount === 1 ? '' : 's'} from your inbox!`,
+          });
+        } else {
+          setSyncMessage({
+            type: 'info',
+            text: data.message || `Scanned ${data.scannedCount || 0} emails. No new purchase receipts or order confirmations found.`,
+          });
+        }
+        // Refresh server components on the dashboard to display new purchases
+        router.refresh();
+      } else {
+        setSyncMessage({
+          type: 'error',
+          text: data.error || data.message || 'Sync failed. Please verify your connection.',
+        });
+      }
+    } catch (err: any) {
+      setSyncMessage({
+        type: 'error',
+        text: err.message || 'Failed to trigger inbox sync.',
+      });
+    } finally {
+      setIsSyncing(false);
+      setSyncingId(null);
+    }
+  };
 
   const handleDisconnect = async (id: string, purgeData: boolean) => {
     const confirmMsg = purgeData
@@ -93,7 +150,58 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
         {statusParam === 'gmail_connected' && (
           <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
             <Check className="w-4 h-4 shrink-0" />
-            <span className="font-semibold">Gmail connected successfully! PurchaseGuard will automatically monitor incoming purchase receipts.</span>
+            <div>
+              <p className="font-semibold">Gmail connected successfully!</p>
+              {syncedParam && Number(syncedParam) > 0 ? (
+                <p className="text-[11px] mt-0.5">Found and synced {syncedParam} purchase receipt{Number(syncedParam) === 1 ? '' : 's'} to your dashboard.</p>
+              ) : (
+                <p className="text-[11px] mt-0.5">PurchaseGuard is now monitoring your inbox for purchase receipts and invoices.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {statusParam === 'outlook_connected' && (
+          <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Outlook connected successfully!</p>
+              <p className="text-[11px] mt-0.5">PurchaseGuard is now monitoring your Outlook inbox for receipts and invoices.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Sync Result Toast Banner */}
+        {syncMessage && (
+          <div
+            className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+              syncMessage.type === 'success'
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : syncMessage.type === 'error'
+                ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                : 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+            }`}
+          >
+            {syncMessage.type === 'success' ? (
+              <Check className="w-4 h-4 shrink-0 mt-0.5" />
+            ) : syncMessage.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            ) : (
+              <Inbox className="w-4 h-4 shrink-0 mt-0.5" />
+            )}
+            <div className="leading-relaxed">
+              <span className="font-medium">{syncMessage.text}</span>
+            </div>
+          </div>
+        )}
+
+        {syncErrorParam && (
+          <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <div>
+              <p className="font-bold">Sync Notice</p>
+              <p className="text-[11px] mt-0.5">{decodeURIComponent(syncErrorParam)}</p>
+            </div>
           </div>
         )}
 
@@ -191,23 +299,59 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
           </a>
         </div>
 
-        {/* Connected Accounts List */}
+        {/* Connected Accounts List & Sync Trigger */}
         <div>
-          <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-            Connected Inboxes
-          </h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+              Connected Inboxes ({connections.length})
+            </h4>
+            {connections.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSync()}
+                disabled={isSyncing}
+                className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
+              >
+                {isSyncing && syncingId === 'all' ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                <span>{isSyncing && syncingId === 'all' ? 'Scanning...' : 'Sync All Inboxes'}</span>
+              </Button>
+            )}
+          </div>
+
           {connections.length > 0 ? (
             <div className="space-y-2">
               {connections.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border bg-background"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-border bg-background gap-2 sm:gap-0"
                 >
                   <div className="flex items-center gap-2.5 text-xs truncate">
-                    <span className="font-semibold uppercase text-foreground">{c.provider}</span>
-                    <span className="text-muted-foreground truncate">{c.email_address}</span>
+                    <span className="font-semibold uppercase text-foreground px-1.5 py-0.5 rounded bg-muted">
+                      {c.provider}
+                    </span>
+                    <span className="text-muted-foreground font-medium truncate">{c.email_address}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSync(c.id)}
+                      disabled={isSyncing}
+                      className="text-xs text-primary hover:bg-primary/10 h-8"
+                      title="Sync this inbox for receipts"
+                    >
+                      {isSyncing && syncingId === c.id ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Sync Now
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -226,7 +370,7 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
                       title="Disconnect and delete all synced purchases"
                     >
                       <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      Purge Synced Data
+                      Purge
                     </Button>
                   </div>
                 </div>

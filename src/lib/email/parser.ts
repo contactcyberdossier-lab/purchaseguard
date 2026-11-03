@@ -75,10 +75,11 @@ export function classifyEmail(subject: string, bodyText: string): DetectedEmailT
 
   // Strong purchase indicators take precedence
   const hasStrongPurchaseIndicator =
-    /order\s*(number|#|id|confirmation)/i.test(text) ||
-    /your\s*order\s*has\s*been\s*placed/i.test(text) ||
-    /thank\s*you\s*for\s*your\s*order/i.test(text) ||
-    /receipt\s*for\s*your\s*order/i.test(text);
+    /order\s*(number|#|id|confirmation|placed|confirmed|details)/i.test(text) ||
+    /your\s*order\s*has\s*been\s*(placed|shipped|delivered|confirmed)/i.test(text) ||
+    /thank\s*you\s*for\s*(your\s*)?(order|purchase)/i.test(text) ||
+    /receipt\s*for\s*your\s*order/i.test(text) ||
+    /tax\s*invoice|bill\s*details|payment\s*successful|payment\s*received|e-receipt/i.test(text);
 
   const hasMarketingKeyword = marketingKeywords.some(kw => text.includes(kw));
 
@@ -162,6 +163,30 @@ export function detectKnownRetailer(senderEmail: string, subject: string, bodyTe
   }
   if (sender.includes('myntra') || text.includes('myntra.com')) {
     return { retailerName: 'Myntra', retailerDomain: 'myntra.com', confidence: 0.98 };
+  }
+  if (sender.includes('swiggy') || text.includes('swiggy.in') || text.includes('swiggy')) {
+    return { retailerName: 'Swiggy', retailerDomain: 'swiggy.in', confidence: 0.98 };
+  }
+  if (sender.includes('zomato') || text.includes('zomato.com') || text.includes('zomato')) {
+    return { retailerName: 'Zomato', retailerDomain: 'zomato.com', confidence: 0.98 };
+  }
+  if (sender.includes('croma') || text.includes('croma.com')) {
+    return { retailerName: 'Croma', retailerDomain: 'croma.com', confidence: 0.98 };
+  }
+  if (sender.includes('meesho') || text.includes('meesho.com')) {
+    return { retailerName: 'Meesho', retailerDomain: 'meesho.com', confidence: 0.98 };
+  }
+  if (sender.includes('reliancedigital') || text.includes('reliance digital')) {
+    return { retailerName: 'Reliance Digital', retailerDomain: 'reliancedigital.in', confidence: 0.98 };
+  }
+  if (sender.includes('blinkit') || text.includes('blinkit.com')) {
+    return { retailerName: 'Blinkit', retailerDomain: 'blinkit.com', confidence: 0.98 };
+  }
+  if (sender.includes('zepto') || text.includes('zeptonow.com')) {
+    return { retailerName: 'Zepto', retailerDomain: 'zeptonow.com', confidence: 0.98 };
+  }
+  if (sender.includes('tataneu') || text.includes('tatadigital')) {
+    return { retailerName: 'Tata Neu', retailerDomain: 'tataneu.com', confidence: 0.96 };
   }
   if (sender.includes('samsung') || text.includes('samsung.com')) {
     return { retailerName: 'Samsung', retailerDomain: 'samsung.com', confidence: 0.96 };
