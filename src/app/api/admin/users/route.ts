@@ -40,9 +40,25 @@ export async function GET(request: NextRequest) {
 
     query = query.order('created_at', { ascending: false });
 
-    const { data: users, error } = await query;
+    let { data: users, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.warn('Admin users join query failed, falling back to flat select:', error.message);
+      let fallbackQuery = supabase
+        .from('users')
+        .select('id, email, full_name, role, subscription_status, country, created_at')
+        .order('created_at', { ascending: false });
+
+      if (role && role !== 'all') {
+        fallbackQuery = fallbackQuery.eq('role', role);
+      }
+      if (subscription && subscription !== 'all') {
+        fallbackQuery = fallbackQuery.eq('subscription_status', subscription);
+      }
+      const fallback = await fallbackQuery;
+      if (fallback.error) throw fallback.error;
+      users = fallback.data;
+    }
 
     // Format with purchase count
     const formatted = (users || []).map((u: any) => ({

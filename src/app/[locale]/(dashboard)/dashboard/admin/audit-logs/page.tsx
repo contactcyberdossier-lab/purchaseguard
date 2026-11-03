@@ -25,18 +25,23 @@ export default function AdminAuditLogsPage() {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [actionFilter, setActionFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchLogs = async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ action: actionFilter });
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       const data = await res.json();
       if (res.ok) {
         setLogs(data.logs || []);
+      } else {
+        setError(data.error || 'Failed to load audit records');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err?.message || 'Network error fetching audit logs');
     } finally {
       setLoading(false);
     }
@@ -79,6 +84,10 @@ export default function AdminAuditLogsPage() {
         {loading ? (
           <div className="p-12 text-center text-sm text-muted-foreground">
             Loading audit records...
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center text-sm text-destructive">
+            {error}
           </div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">
