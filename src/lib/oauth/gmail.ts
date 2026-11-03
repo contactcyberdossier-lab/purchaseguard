@@ -8,7 +8,7 @@ const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
 export function getGoogleAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguard-six.vercel.app').replace(/\/+$/, '');
+  const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com').replace(/\/+$/, '');
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${cleanOrigin}/api/auth/oauth/google/callback`;
 
   if (!clientId) {
@@ -36,7 +36,7 @@ export async function exchangeGoogleCodeForTokens(code: string, requestOrigin?: 
 }> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguard-six.vercel.app').replace(/\/+$/, '');
+  const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com').replace(/\/+$/, '');
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${cleanOrigin}/api/auth/oauth/google/callback`;
 
   if (!clientId || !clientSecret) {

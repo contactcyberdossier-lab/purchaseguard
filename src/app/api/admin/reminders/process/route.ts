@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get('force') === 'true';
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguard-six.vercel.app';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com';
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
 

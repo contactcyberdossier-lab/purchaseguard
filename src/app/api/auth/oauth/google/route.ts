@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const origin =
     request.nextUrl.origin ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    'https://purchaseguard-six.vercel.app';
+    'https://purchaseguardapp.com';
 
   if (!user) {
     return NextResponse.redirect(`${origin}/en/login`);

@@ -142,7 +142,7 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
               <li>
                 In <strong>Authorized redirect URIs</strong>, enter:{' '}
                 <code className="bg-card px-1.5 py-0.5 rounded font-mono text-[10px] select-all border border-border">
-                  https://purchaseguard-six.vercel.app/api/auth/oauth/google/callback
+                  https://purchaseguardapp.com/api/auth/oauth/google/callback
                 </code>
               </li>
               <li>

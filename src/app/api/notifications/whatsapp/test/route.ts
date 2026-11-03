@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       retailerName: 'Amazon',
       returnDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       daysLeft: 3,
-      dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguard-six.vercel.app'}/en/dashboard`,
+      dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com'}/en/dashboard`,
     });
 
     const result = await sendWhatsAppMessage({

@@ -8,7 +8,7 @@ const OUTLOOK_SCOPES = 'Mail.Read offline_access User.Read';
 
 export function getMicrosoftAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguardapp.com';
   const redirectUri = process.env.MICROSOFT_REDIRECT_URI || `${baseUrl}/api/auth/oauth/microsoft/callback`;
 
   if (!clientId) {
@@ -35,7 +35,7 @@ export async function exchangeMicrosoftCodeForTokens(code: string, requestOrigin
 }> {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguard-six.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || 'https://purchaseguardapp.com';
   const redirectUri = process.env.MICROSOFT_REDIRECT_URI || `${baseUrl}/api/auth/oauth/microsoft/callback`;
 
   if (!clientId || !clientSecret) {

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const recipientEmail = body.email || user.email;
 
     const returnDeadlineStr = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguard-six.vercel.app'}/en/dashboard`;
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com'}/en/dashboard`;
 
     const html = buildReturnDeadlineAlertHtml({
       productName: 'Sample Order (Test Item)',
