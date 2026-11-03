@@ -19,7 +19,7 @@ export function SocialAuthButtons({ locale, onError }: SocialAuthButtonsProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const supabase = createClient();
 
-  const handleOAuth = async (provider: 'google' | 'apple') => {
+  const handleOAuth = async (provider: 'google' | 'azure') => {
     setIsLoading(provider);
     if (provider === 'google') {
       // Direct-domain OAuth: Redirects through /api/auth/google/login so Google displays purchaseguardapp.com
@@ -38,7 +38,7 @@ export function SocialAuthButtons({ locale, onError }: SocialAuthButtonsProps) {
         setIsLoading(null);
         onError?.(
           error.message.includes('not enabled')
-            ? 'Google Sign-in is not enabled in Supabase yet. Please enable the Google provider in your Supabase Authentication settings.'
+            ? 'Microsoft Sign-in is not enabled in Supabase yet. Please enable the Azure provider in your Supabase Authentication settings.'
             : error.message
         );
       }
@@ -79,18 +79,21 @@ export function SocialAuthButtons({ locale, onError }: SocialAuthButtonsProps) {
         <span>{dict.auth.googleAuth}</span>
       </Button>
 
-      {/* Apple Sign In */}
+      {/* Microsoft Sign In */}
       <Button
         type="button"
         variant="outline"
         className="w-full flex items-center justify-center gap-2 h-11"
-        isLoading={isLoading === 'apple'}
-        onClick={() => handleOAuth('apple')}
+        isLoading={isLoading === 'azure'}
+        onClick={() => handleOAuth('azure')}
       >
-        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.84c.66-.82 1.11-1.96.99-3.1-.96.04-2.13.65-2.82 1.46-.61.71-1.15 1.87-.99 2.98 1.07.08 2.16-.54 2.82-1.34z" />
+        <svg className="h-4 w-4" viewBox="0 0 21 21">
+          <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+          <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+          <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+          <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
         </svg>
-        <span>{dict.auth.appleAuth}</span>
+        <span>Continue with Microsoft</span>
       </Button>
     </div>
   );
