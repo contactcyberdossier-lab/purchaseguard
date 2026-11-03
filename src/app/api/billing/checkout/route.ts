@@ -26,16 +26,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid subscription plan selected' }, { status: 400 });
     }
 
-    // Prefer Lemon Squeezy checkout if configured or if Stripe secret is not provided
+    // Support Lemon Squeezy checkout for both Monthly ($5/mo) and Annual ($49/yr)
     const lemonMonthlyUrl =
       process.env.LEMON_SQUEEZY_PLUS_MONTHLY_URL ||
       'https://purchaseguard.lemonsqueezy.com/checkout/buy/07cef99e-3591-4114-be45-f4042ca3c614';
+
+    const lemonAnnualUrl =
+      process.env.LEMON_SQUEEZY_PLUS_ANNUAL_URL ||
+      lemonMonthlyUrl;
 
     const hasStripe = Boolean(process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('placeholder'));
 
     if (lemonMonthlyUrl && (!hasStripe || process.env.PREFERRED_BILLING_GATEWAY === 'lemonsqueezy')) {
       const emailParam = encodeURIComponent(user.email || '');
-      const redirectCheckoutUrl = `${lemonMonthlyUrl}?checkout[custom][user_id]=${user.id}&checkout[email]=${emailParam}`;
+      const targetUrl = planId === 'plus_annual' && lemonAnnualUrl ? lemonAnnualUrl : lemonMonthlyUrl;
+      const redirectCheckoutUrl = `${targetUrl}?checkout[custom][user_id]=${user.id}&checkout[email]=${emailParam}`;
       return NextResponse.json({ url: redirectCheckoutUrl });
     }
 
