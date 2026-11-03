@@ -134,51 +134,89 @@ CRITICAL RULES:
 5. ITEMS:
    - Extract up to 10 distinct items if listed on the receipt.`;
 
-    // Try Gemini 1.5 Flash, then fallback models if needed
-    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash'];
+    // Models ordered by capability and availability
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-latest',
+      'gemini-flash-latest',
+      'gemini-2.5-pro',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
+    ];
     let geminiResponse: any = null;
     let geminiError: string | null = null;
 
-    for (const model of models) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { text: prompt },
-                    {
-                      inline_data: {
-                        mime_type: mimeType,
-                        data: base64Data,
-                      },
+    const tryModel = async (modelName: string) => {
+      const cleanName = modelName.replace(/^models\//, '');
+      return await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${cleanName}:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: mimeType,
+                      data: base64Data,
                     },
-                  ],
-                },
-              ],
-              generationConfig: {
-                response_mime_type: 'application/json',
-                temperature: 0.1,
+                  },
+                ],
               },
-            }),
-          }
-        );
+            ],
+            generationConfig: {
+              response_mime_type: 'application/json',
+              temperature: 0.1,
+            },
+          }),
+        }
+      );
+    };
 
+    // 1. Try prioritized candidate models
+    for (const model of candidateModels) {
+      try {
+        const res = await tryModel(model);
         if (res.ok) {
           geminiResponse = await res.json();
           break;
         } else {
           const errBody = await res.text();
-          geminiError = `Model ${model} returned status ${res.status}: ${errBody}`;
+          geminiError = `Model ${model} (${res.status}): ${errBody}`;
           console.warn(geminiError);
         }
       } catch (err: any) {
         geminiError = `Model ${model} network error: ${err.message}`;
         console.warn(geminiError);
+      }
+    }
+
+    // 2. Dynamic fallback: Auto-discover active models from Google API
+    if (!geminiResponse) {
+      try {
+        const listRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`
+        );
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const available = (listData.models || []).filter(
+            (m: any) =>
+              m.supportedGenerationMethods?.includes('generateContent') &&
+              (m.name?.includes('flash') || m.name?.includes('gemini'))
+          );
+          for (const m of available) {
+            const res = await tryModel(m.name);
+            if (res.ok) {
+              geminiResponse = await res.json();
+              break;
+            }
+          }
+        }
+      } catch (discErr) {
+        console.warn('Dynamic model discovery error:', discErr);
       }
     }
 
