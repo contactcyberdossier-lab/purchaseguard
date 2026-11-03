@@ -21,6 +21,12 @@ export function SocialAuthButtons({ locale, onError }: SocialAuthButtonsProps) {
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
     setIsLoading(provider);
+    if (provider === 'google') {
+      // Direct-domain OAuth: Redirects through /api/auth/google/login so Google displays purchaseguardapp.com
+      window.location.href = '/api/auth/google/login';
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
