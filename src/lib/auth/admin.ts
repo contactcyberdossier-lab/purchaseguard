@@ -43,6 +43,14 @@ export async function verifyAdminSession(supabase: SupabaseClient): Promise<Admi
     };
   }
 
+  const adminEmails = [
+    'contact.cyberdossier@gmail.com',
+    'pmanikantasai1996@gmail.com',
+    process.env.ADMIN_EMAIL,
+  ].filter(Boolean);
+
+  const isEmailAdmin = Boolean(user.email && adminEmails.includes(user.email));
+
   // Fetch role from public.users table
   const { data: profile, error: profileError } = await supabase
     .from('users')
@@ -50,25 +58,22 @@ export async function verifyAdminSession(supabase: SupabaseClient): Promise<Admi
     .eq('id', user.id)
     .single();
 
-  if (profileError || !profile) {
-    return {
-      isAdmin: false,
-      user,
-      profile: null,
-      errorResponse: NextResponse.json(
-        { error: 'User profile not found.' },
-        { status: 403 }
-      ),
-    };
-  }
+  const userProfile: UserProfile = profile || {
+    id: user.id,
+    email: user.email || '',
+    full_name: user.user_metadata?.full_name || 'Admin',
+    role: isEmailAdmin ? 'admin' : 'user',
+    subscription_status: 'admin',
+    created_at: new Date().toISOString(),
+  };
 
-  const isAdmin = profile.role === 'admin';
+  const isAdmin = userProfile.role === 'admin' || isEmailAdmin;
 
   if (!isAdmin) {
     return {
       isAdmin: false,
       user,
-      profile,
+      profile: userProfile,
       errorResponse: NextResponse.json(
         { error: 'Forbidden. Administrator privileges required.' },
         { status: 403 }
@@ -79,6 +84,6 @@ export async function verifyAdminSession(supabase: SupabaseClient): Promise<Admi
   return {
     isAdmin: true,
     user,
-    profile,
+    profile: userProfile,
   };
 }

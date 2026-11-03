@@ -31,8 +31,15 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single();
 
-  const isAdmin = profile?.role === 'admin';
-  const plan = profile?.subscription_status || 'free';
+  const adminEmails = [
+    'contact.cyberdossier@gmail.com',
+    'pmanikantasai1996@gmail.com',
+    process.env.ADMIN_EMAIL,
+  ].filter(Boolean);
+
+  const isEmailAdmin = Boolean(user.email && adminEmails.includes(user.email));
+  const isAdmin = profile?.role === 'admin' || isEmailAdmin;
+  const plan = profile?.subscription_status || (isEmailAdmin ? 'admin' : 'free');
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
