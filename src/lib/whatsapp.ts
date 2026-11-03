@@ -42,9 +42,19 @@ export async function sendWhatsAppMessage({
   const twilioToken = process.env.TWILIO_AUTH_TOKEN;
   const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER || '+14155238886'; // default Twilio sandbox number
 
-  // Check for Meta WhatsApp Cloud API Credentials
-  const metaToken = process.env.WHATSAPP_CLOUD_ACCESS_TOKEN;
-  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  // Check for Meta WhatsApp Cloud API Credentials (support all standard naming conventions)
+  const metaToken =
+    process.env.WHATSAPP_CLOUD_ACCESS_TOKEN ||
+    process.env.WHATSAPP_ACCESS_TOKEN ||
+    process.env.WHATSAPP_TOKEN ||
+    process.env.META_ACCESS_TOKEN ||
+    process.env.META_WHATSAPP_TOKEN;
+
+  const metaPhoneId =
+    process.env.WHATSAPP_PHONE_NUMBER_ID ||
+    process.env.WHATSAPP_PHONE_ID ||
+    process.env.PHONE_NUMBER_ID ||
+    process.env.WHATSAPP_NUMBER_ID;
 
   // 1. Send via Twilio WhatsApp API if configured
   if (twilioSid && twilioToken && !twilioSid.includes('placeholder')) {

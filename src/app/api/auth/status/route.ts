@@ -26,12 +26,34 @@ export async function GET() {
     hostname = 'INVALID_URL';
   }
 
+  const hasWhatsappToken = Boolean(
+    process.env.WHATSAPP_CLOUD_ACCESS_TOKEN ||
+    process.env.WHATSAPP_ACCESS_TOKEN ||
+    process.env.WHATSAPP_TOKEN ||
+    process.env.META_ACCESS_TOKEN ||
+    process.env.META_WHATSAPP_TOKEN
+  );
+  const hasWhatsappPhoneId = Boolean(
+    process.env.WHATSAPP_PHONE_NUMBER_ID ||
+    process.env.WHATSAPP_PHONE_ID ||
+    process.env.PHONE_NUMBER_ID ||
+    process.env.WHATSAPP_NUMBER_ID
+  );
+  const hasCallMeBot = Boolean(process.env.CALLMEBOT_API_KEY);
+  const hasTwilio = Boolean(process.env.TWILIO_ACCOUNT_SID);
+
   return NextResponse.json({
     status: isConfigured ? 'ok' : 'misconfigured',
     supabaseHost: hostname,
     hasUrl: Boolean(url),
     hasKey: Boolean(key),
     keyFormat: key ? (key.startsWith('sb_') ? 'modern_publishable' : key.startsWith('eyJ') ? 'jwt_anon' : 'unknown') : 'none',
+    whatsapp: {
+      hasCloudToken: hasWhatsappToken,
+      hasPhoneId: hasWhatsappPhoneId,
+      hasCallMeBot,
+      hasTwilio,
+    },
     timestamp: new Date().toISOString(),
   });
 }
