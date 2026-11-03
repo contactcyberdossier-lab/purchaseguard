@@ -122,7 +122,7 @@ export function ReceiptUploader({ purchaseId, onUploadSuccess }: ReceiptUploader
             <UploadCloud className="h-6 w-6" />
           </div>
           <div className="text-sm font-semibold text-foreground">
-            {selectedFile ? selectedFile.name : 'Click or drag receipt here to upload'}
+            {selectedFile ? selectedFile.name : 'Click or drag receipt, invoice, or warranty certificate here'}
           </div>
           <p className="text-xs text-muted-foreground">
             PDF, JPG, PNG, WEBP (Max 10 MB)

@@ -263,6 +263,14 @@ export default function PurchaseDetailPage({ params: { locale, id } }: PurchaseD
                   : 'Standard Manufacturer Warranty'}
               </span>
             </div>
+            {purchase.notes && (
+              <div className="pt-2 border-t border-border mt-2 space-y-1">
+                <span className="text-[11px] font-semibold text-muted-foreground block">Policy / Coverage Notes:</span>
+                <div className="p-2 rounded-lg bg-muted/40 border border-border text-xs text-foreground whitespace-pre-wrap">
+                  {purchase.notes}
+                </div>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground pt-1">
               You will receive an alert 30 days before coverage expires.
             </p>

@@ -36,6 +36,8 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
   const [calculatedReturnDate, setCalculatedReturnDate] = useState('');
   const [calculatedWarrantyDate, setCalculatedWarrantyDate] = useState('');
   const [isNonReturnable, setIsNonReturnable] = useState(false);
+  const [warrantyProvider, setWarrantyProvider] = useState('');
+  const [warrantyPolicyNumber, setWarrantyPolicyNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [detectedPolicyNote, setDetectedPolicyNote] = useState<string | null>(null);
 
@@ -122,6 +124,8 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setReturnDays('');
     setWarrantyMonths(12);
     setIsNonReturnable(false);
+    setWarrantyProvider('');
+    setWarrantyPolicyNumber('');
     setNotes('');
     setItems([]);
     setError(null);
@@ -211,6 +215,14 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
     setIsLoading(true);
 
     try {
+      let finalNotes = notes?.trim() || '';
+      if (warrantyProvider || warrantyPolicyNumber) {
+        const extNote = `[Extended Warranty] Provider: ${warrantyProvider || 'Third-Party'} | Policy #${warrantyPolicyNumber || 'N/A'}`;
+        if (!finalNotes.includes(extNote)) {
+          finalNotes = finalNotes ? `${finalNotes}\n${extNote}` : extNote;
+        }
+      }
+
       const payload: PurchaseInput = {
         retailer_name: retailerName,
         product_name: productName,
@@ -227,7 +239,7 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
         warranty_deadline: calculatedWarrantyDate || undefined,
         custom_return_days: isNonReturnable ? 0 : (returnDays ? Number(returnDays) : undefined),
         is_non_returnable: isNonReturnable,
-        notes: notes || undefined,
+        notes: finalNotes || undefined,
         items,
       };
 
@@ -590,6 +602,31 @@ export function PurchaseModal({ isOpen, onClose, onSuccess, initialData }: Purch
                   </button>
                 ))}
               </div>
+
+              {typeof warrantyMonths === 'number' && warrantyMonths > 12 && (
+                <div className="mt-2.5 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-foreground space-y-2">
+                  <div className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Extended Protection Details (+{(warrantyMonths - 12) / 12} Yr)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Provider (AppleCare+, OneAssist, Asurion)"
+                      value={warrantyProvider}
+                      onChange={(e) => setWarrantyProvider(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Policy / Certificate #"
+                      value={warrantyPolicyNumber}
+                      onChange={(e) => setWarrantyPolicyNumber(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
