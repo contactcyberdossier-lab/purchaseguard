@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (lemonMonthlyUrl && (!hasStripe || process.env.PREFERRED_BILLING_GATEWAY === 'lemonsqueezy')) {
       const emailParam = encodeURIComponent(user.email || '');
       const targetUrl = planId === 'plus_annual' && lemonAnnualUrl ? lemonAnnualUrl : lemonMonthlyUrl;
-      const redirectCheckoutUrl = `${targetUrl}?checkout[custom][user_id]=${user.id}&checkout[email]=${emailParam}`;
+      const redirectCheckoutUrl = `${targetUrl}?embed=1&media=0&checkout[custom][user_id]=${user.id}&checkout[email]=${emailParam}`;
       return NextResponse.json({ url: redirectCheckoutUrl });
     }
 

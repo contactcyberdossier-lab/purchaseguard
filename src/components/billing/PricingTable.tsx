@@ -4,7 +4,8 @@
 // In-App Pricing & Subscription Tier Selector
 // ========================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Script from 'next/script';
 import { Check, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/Card';
@@ -18,6 +19,19 @@ interface PricingTableProps {
 export function PricingTable({ currentPlanId, locale }: PricingTableProps) {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).createLemonSqueezy?.();
+      (window as any).LemonSqueezy?.Setup({
+        eventHandler: (event: any) => {
+          if (event?.event === 'Checkout.Success') {
+            window.location.reload();
+          }
+        },
+      });
+    }
+  }, []);
+
   const handleSubscribe = async (planId: string) => {
     setLoadingPlan(planId);
     try {
@@ -29,7 +43,12 @@ export function PricingTable({ currentPlanId, locale }: PricingTableProps) {
 
       const data = await res.json();
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        if (data.url.includes('lemonsqueezy.com') && (window as any).LemonSqueezy) {
+          (window as any).createLemonSqueezy?.();
+          (window as any).LemonSqueezy.Url.Open(data.url);
+        } else {
+          window.location.href = data.url;
+        }
       } else {
         alert(data.error || 'Failed to start checkout');
       }
@@ -51,7 +70,12 @@ export function PricingTable({ currentPlanId, locale }: PricingTableProps) {
 
       const data = await res.json();
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        if (data.url.includes('lemonsqueezy.com') && (window as any).LemonSqueezy) {
+          (window as any).createLemonSqueezy?.();
+          (window as any).LemonSqueezy.Url.Open(data.url);
+        } else {
+          window.location.href = data.url;
+        }
       } else {
         alert(data.error || 'Failed to open billing portal');
       }
@@ -186,6 +210,14 @@ export function PricingTable({ currentPlanId, locale }: PricingTableProps) {
           </p>
         </div>
       </div>
+      {/* Lemon.js In-App Overlay Script */}
+      <Script
+        src="https://assets.lemonsqueezy.com/lemon.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          (window as any).createLemonSqueezy?.();
+        }}
+      />
     </div>
   );
 }
