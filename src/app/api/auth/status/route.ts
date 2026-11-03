@@ -30,8 +30,12 @@ export async function GET() {
     process.env.WHATSAPP_CLOUD_ACCESS_TOKEN ||
     process.env.WHATSAPP_ACCESS_TOKEN ||
     process.env.WHATSAPP_TOKEN ||
+    process.env.WHATSAPP_API_TOKEN ||
+    process.env.WHATSAPP_API_KEY ||
     process.env.META_ACCESS_TOKEN ||
-    process.env.META_WHATSAPP_TOKEN
+    process.env.META_WHATSAPP_TOKEN ||
+    process.env.META_TOKEN ||
+    process.env.ACCESS_TOKEN
   );
   const hasWhatsappPhoneId = Boolean(
     process.env.WHATSAPP_PHONE_NUMBER_ID ||
