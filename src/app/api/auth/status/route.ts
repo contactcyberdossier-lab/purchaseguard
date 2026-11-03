@@ -64,6 +64,10 @@ export async function GET() {
       hasCallMeBot,
       hasTwilio,
     },
+    email: {
+      hasResendKey: Boolean(process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('...') && !process.env.RESEND_API_KEY.includes('placeholder')),
+      fromAddress: process.env.EMAIL_FROM_ADDRESS || 'onboarding@resend.dev',
+    },
     timestamp: new Date().toISOString(),
   });
 }

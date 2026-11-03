@@ -17,13 +17,14 @@ export async function sendTransactionalEmail({
   subject,
   htmlContent,
   textContent,
-}: SendEmailParams): Promise<{ success: boolean; id?: string; error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM_ADDRESS || 'PurchaseGuard <notifications@purchaseguard.app>';
+}: SendEmailParams): Promise<{ success: boolean; id?: string; error?: string; simulated?: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  // If no custom domain is specified, Resend free accounts allow sending from onboarding@resend.dev to the account owner
+  const from = process.env.EMAIL_FROM_ADDRESS || 'PurchaseGuard <onboarding@resend.dev>';
 
-  if (!apiKey || apiKey === 're_...') {
+  if (!apiKey || apiKey === 're_...' || apiKey.includes('placeholder')) {
     console.log(`[Notification Mock] Email to: ${to} | Subject: ${subject}`);
-    return { success: true, id: 'mock-email-id' };
+    return { success: true, id: 'mock-email-id', simulated: true };
   }
 
   try {

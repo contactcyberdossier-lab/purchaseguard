@@ -62,6 +62,7 @@ export function SettingsTabs({ initialProfile, locale }: SettingsTabsProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
   const [isTestingPush, setIsTestingPush] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Delete modal state
@@ -173,6 +174,28 @@ export function SettingsTabs({ initialProfile, locale }: SettingsTabsProps) {
       setStatusMsg({ type: 'error', message: err.message || 'Error sending WhatsApp alert' });
     } finally {
       setIsTestingWhatsApp(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setIsTestingEmail(true);
+    setStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/notifications/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: initialProfile.email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send test email');
+
+      setStatusMsg({ type: 'success', message: data.message || 'Test email dispatched successfully!' });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', message: err.message || 'Error sending test email' });
+    } finally {
+      setIsTestingEmail(false);
     }
   };
 
@@ -471,6 +494,32 @@ export function SettingsTabs({ initialProfile, locale }: SettingsTabsProps) {
                 onChange={(e) => setEmailReminders(e.target.checked)}
                 className="h-5 w-5 mt-1 rounded border-input text-primary focus:ring-ring cursor-pointer"
               />
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-border/50 gap-3">
+              <span className="text-xs text-muted-foreground">
+                Destination: <span className="text-foreground font-mono font-medium">{initialProfile.email}</span>
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestEmail}
+                disabled={isTestingEmail}
+                className="gap-2 shrink-0"
+              >
+                {isTestingEmail ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Sending Email...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Send Test Email Alert
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
