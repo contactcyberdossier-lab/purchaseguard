@@ -44,10 +44,11 @@ export async function GET(request: NextRequest) {
     const { accessTokenEncrypted, refreshTokenEncrypted, expiresInSeconds, emailAddress } =
       await exchangeMicrosoftCodeForTokens(code, origin);
 
-    const resolvedEmail =
+    const rawEmail =
       emailAddress && emailAddress !== 'connected-outlook'
         ? emailAddress
         : (user.email || 'connected-outlook');
+    const normalizedEmail = rawEmail.toLowerCase().trim();
 
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
     const connPayload = {
       user_id: user.id,
       provider: 'outlook',
-      email_address: resolvedEmail,
+      email_address: normalizedEmail,
       access_token_encrypted: accessTokenEncrypted,
       refresh_token_encrypted: refreshTokenEncrypted,
       token_expires_at: expiresAt,
@@ -67,26 +68,32 @@ export async function GET(request: NextRequest) {
     let saveSuccess = false;
     let lastError: any = null;
 
-    for (const client of [adminDb, supabase]) {
+    // Try authenticated user session client first (passes RLS auth.uid() = user.id), fallback to service client
+    for (const client of [supabase, adminDb]) {
       try {
         // Ensure user row exists in public.users to satisfy foreign key constraint
-        await client.from('users').upsert(
-          {
+        const { data: userRow } = await client
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!userRow) {
+          await client.from('users').insert({
             id: user.id,
-            email: user.email || resolvedEmail,
+            email: normalizedEmail,
             full_name: user.user_metadata?.full_name || '',
             subscription_status: 'free',
-          },
-          { onConflict: 'id' }
-        );
+          });
+        }
 
-        // Check if connection already exists to avoid ON CONFLICT constraint mismatch
+        // Check if connection already exists (case-insensitive) to avoid ON CONFLICT constraint mismatch
         const { data: existing } = await client
           .from('email_connections')
           .select('id')
           .eq('user_id', user.id)
           .eq('provider', 'outlook')
-          .eq('email_address', resolvedEmail)
+          .ilike('email_address', normalizedEmail)
           .maybeSingle();
 
         if (existing?.id) {
@@ -114,10 +121,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!saveSuccess && lastError) {
+    if (!saveSuccess) {
       console.error('Email connection save error:', lastError);
+      const errMsg = lastError?.message || lastError?.details || 'connection_save_failed';
       return NextResponse.redirect(
-        `${origin}/${defaultLocale}/dashboard?error=${encodeURIComponent(lastError.message || 'connection_save_failed')}#email-sync`
+        `${origin}/${defaultLocale}/dashboard?error=${encodeURIComponent(errMsg)}#email-sync`
       );
     }
 
@@ -125,13 +133,13 @@ export async function GET(request: NextRequest) {
       await supabase.from('audit_logs').insert({
         user_id: user.id,
         action: 'outlook_connected',
-        metadata: { email: resolvedEmail },
+        metadata: { email: normalizedEmail },
       });
     } catch {}
 
     let syncParams = '';
     try {
-      const syncResult = await syncUserEmailAccounts(user.id);
+      const syncResult = await syncUserEmailAccounts(user.id, undefined, supabase);
       if (syncResult.syncedCount > 0) {
         syncParams = `&synced=${syncResult.syncedCount}`;
       } else if (syncResult.error) {

@@ -55,7 +55,10 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
   const fetchConnections = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/email-connections');
+      const res = await fetch(`/api/email-connections?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       const data = await res.json();
       if (res.ok) {
         setConnections(data.connections || []);
@@ -67,7 +70,13 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
 
   useEffect(() => {
     fetchConnections();
-  }, []);
+    if (statusParam) {
+      const timer = setTimeout(() => {
+        fetchConnections();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [statusParam]);
 
   const handleSync = async (connectionId?: string) => {
     setIsSyncing(true);
@@ -201,6 +210,16 @@ export function EmailConnectionsCard({ userEmail }: { userEmail?: string }) {
             <div>
               <p className="font-bold">Sync Notice</p>
               <p className="text-[11px] mt-0.5">{decodeURIComponent(syncErrorParam)}</p>
+            </div>
+          </div>
+        )}
+
+        {errorParam && errorParam !== 'gmail_oauth_missing_credentials' && (
+          <div className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">OAuth Connection Error</p>
+              <p className="text-[11px] mt-0.5 leading-relaxed">{decodeURIComponent(errorParam)}</p>
             </div>
           </div>
         )}

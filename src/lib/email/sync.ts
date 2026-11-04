@@ -64,9 +64,10 @@ function extractBodyFromPayload(payload: any): string {
  */
 export async function syncUserEmailAccounts(
   userId: string,
-  targetConnectionId?: string
+  targetConnectionId?: string,
+  clientOverride?: any
 ): Promise<SyncResult> {
-  const supabase = getServiceSupabase();
+  const supabase = clientOverride || getServiceSupabase();
 
   let query = supabase
     .from('email_connections')
