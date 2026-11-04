@@ -18,17 +18,32 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Use service client to reliably read user's connections
-  const db = getServiceSupabase();
-  const { data: connections, error } = await db
+  // 1. Try reading with user's authenticated cookie session (passes RLS auth.uid() = user_id)
+  let connections: any[] = [];
+  const sessionRes = await supabase
     .from('email_connections')
     .select('id, provider, email_address, connected_at, token_expires_at')
     .eq('user_id', user.id)
     .is('disconnected_at', null)
     .order('connected_at', { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!sessionRes.error && sessionRes.data && sessionRes.data.length > 0) {
+    connections = sessionRes.data;
+  } else {
+    // 2. Fallback to service client (if service role key is set)
+    const db = getServiceSupabase();
+    const adminRes = await db
+      .from('email_connections')
+      .select('id, provider, email_address, connected_at, token_expires_at')
+      .eq('user_id', user.id)
+      .is('disconnected_at', null)
+      .order('connected_at', { ascending: false });
+
+    if (!adminRes.error && adminRes.data) {
+      connections = adminRes.data;
+    } else if (sessionRes.data) {
+      connections = sessionRes.data;
+    }
   }
 
   return NextResponse.json({ connections: connections || [] });

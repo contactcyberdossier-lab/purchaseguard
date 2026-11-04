@@ -53,45 +53,82 @@ export async function GET(request: NextRequest) {
 
     const adminDb = getServiceSupabase();
 
-    // Ensure user row exists in public.users to satisfy foreign key constraint
-    await adminDb.from('users').upsert(
-      {
-        id: user.id,
-        email: user.email || resolvedEmail,
-        full_name: user.user_metadata?.full_name || '',
-        subscription_status: 'free',
-      },
-      { onConflict: 'id' }
-    );
+    const connPayload = {
+      user_id: user.id,
+      provider: 'gmail',
+      email_address: resolvedEmail,
+      access_token_encrypted: accessTokenEncrypted,
+      refresh_token_encrypted: refreshTokenEncrypted,
+      token_expires_at: expiresAt,
+      connected_at: new Date().toISOString(),
+      disconnected_at: null,
+    };
 
-    // Upsert into email_connections with adminDb to bypass RLS and guarantee persistence
-    const { error: upsertErr } = await adminDb.from('email_connections').upsert(
-      {
-        user_id: user.id,
-        provider: 'gmail',
-        email_address: resolvedEmail,
-        access_token_encrypted: accessTokenEncrypted,
-        refresh_token_encrypted: refreshTokenEncrypted,
-        token_expires_at: expiresAt,
-        connected_at: new Date().toISOString(),
-        disconnected_at: null,
-      },
-      { onConflict: 'user_id,provider,email_address' }
-    );
+    let saveSuccess = false;
+    let lastError: any = null;
 
-    if (upsertErr) {
-      console.error('Email connection upsert error:', upsertErr);
+    for (const client of [adminDb, supabase]) {
+      try {
+        // Ensure user row exists in public.users to satisfy foreign key constraint
+        await client.from('users').upsert(
+          {
+            id: user.id,
+            email: user.email || resolvedEmail,
+            full_name: user.user_metadata?.full_name || '',
+            subscription_status: 'free',
+          },
+          { onConflict: 'id' }
+        );
+
+        // Check if connection already exists to avoid ON CONFLICT constraint mismatch
+        const { data: existing } = await client
+          .from('email_connections')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('provider', 'gmail')
+          .eq('email_address', resolvedEmail)
+          .maybeSingle();
+
+        if (existing?.id) {
+          const { error: updateErr } = await client
+            .from('email_connections')
+            .update(connPayload)
+            .eq('id', existing.id);
+          if (!updateErr) {
+            saveSuccess = true;
+            break;
+          }
+          lastError = updateErr;
+        } else {
+          const { error: insertErr } = await client
+            .from('email_connections')
+            .insert(connPayload);
+          if (!insertErr) {
+            saveSuccess = true;
+            break;
+          }
+          lastError = insertErr;
+        }
+      } catch (err: any) {
+        lastError = err;
+      }
+    }
+
+    if (!saveSuccess && lastError) {
+      console.error('Email connection save error:', lastError);
       return NextResponse.redirect(
-        `${origin}/${defaultLocale}/dashboard?error=${encodeURIComponent(upsertErr.message)}#email-sync`
+        `${origin}/${defaultLocale}/dashboard?error=${encodeURIComponent(lastError.message || 'connection_save_failed')}#email-sync`
       );
     }
 
     // Audit log
-    await adminDb.from('audit_logs').insert({
-      user_id: user.id,
-      action: 'gmail_connected',
-      metadata: { email: resolvedEmail },
-    });
+    try {
+      await supabase.from('audit_logs').insert({
+        user_id: user.id,
+        action: 'gmail_connected',
+        metadata: { email: resolvedEmail },
+      });
+    } catch {}
 
     // Trigger initial automated sync for incoming receipts
     let syncParams = '';
