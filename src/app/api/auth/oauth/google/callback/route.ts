@@ -44,6 +44,11 @@ export async function GET(request: NextRequest) {
     const { accessTokenEncrypted, refreshTokenEncrypted, expiresInSeconds, emailAddress } =
       await exchangeGoogleCodeForTokens(code, origin);
 
+    const resolvedEmail =
+      emailAddress && emailAddress !== 'connected-gmail'
+        ? emailAddress
+        : (user.email || 'connected-gmail');
+
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 
     const adminDb = getServiceSupabase();
@@ -52,7 +57,7 @@ export async function GET(request: NextRequest) {
     await adminDb.from('users').upsert(
       {
         id: user.id,
-        email: user.email || emailAddress,
+        email: user.email || resolvedEmail,
         full_name: user.user_metadata?.full_name || '',
         subscription_status: 'free',
       },
@@ -64,7 +69,7 @@ export async function GET(request: NextRequest) {
       {
         user_id: user.id,
         provider: 'gmail',
-        email_address: emailAddress,
+        email_address: resolvedEmail,
         access_token_encrypted: accessTokenEncrypted,
         refresh_token_encrypted: refreshTokenEncrypted,
         token_expires_at: expiresAt,
@@ -82,10 +87,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Audit log
-    await supabase.from('audit_logs').insert({
+    await adminDb.from('audit_logs').insert({
       user_id: user.id,
       action: 'gmail_connected',
-      metadata: { email: emailAddress },
+      metadata: { email: resolvedEmail },
     });
 
     // Trigger initial automated sync for incoming receipts

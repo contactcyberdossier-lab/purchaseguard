@@ -4,10 +4,10 @@
 
 import { encryptToken, decryptToken } from '../security';
 
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email openid email profile';
 
 export function getGoogleAuthUrl(state: string, requestOrigin?: string): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com').replace(/\/+$/, '');
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${cleanOrigin}/api/auth/oauth/google/callback`;
 
@@ -34,7 +34,7 @@ export async function exchangeGoogleCodeForTokens(code: string, requestOrigin?: 
   expiresInSeconds: number;
   emailAddress: string;
 }> {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const cleanOrigin = (requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'https://purchaseguardapp.com').replace(/\/+$/, '');
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${cleanOrigin}/api/auth/oauth/google/callback`;
@@ -60,17 +60,40 @@ export async function exchangeGoogleCodeForTokens(code: string, requestOrigin?: 
     throw new Error(tokenData.error_description || 'Failed to exchange Google OAuth code');
   }
 
-  // Fetch connected profile email address
-  const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    headers: { Authorization: `Bearer ${tokenData.access_token}` },
-  });
-  const userData = await userRes.json();
+  // Fetch connected profile email address from Gmail API and Userinfo
+  let emailAddress = '';
+
+  try {
+    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    if (profileRes.ok) {
+      const profileData = await profileRes.json();
+      emailAddress = profileData.emailAddress || '';
+    }
+  } catch (profileErr) {
+    console.warn('Gmail profile fetch warning:', profileErr);
+  }
+
+  if (!emailAddress) {
+    try {
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        emailAddress = userData.email || '';
+      }
+    } catch (userErr) {
+      console.warn('Userinfo fetch warning:', userErr);
+    }
+  }
 
   return {
     accessTokenEncrypted: encryptToken(tokenData.access_token),
     refreshTokenEncrypted: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : '',
     expiresInSeconds: tokenData.expires_in || 3600,
-    emailAddress: userData.email,
+    emailAddress: emailAddress || 'connected-gmail',
   };
 }
 
