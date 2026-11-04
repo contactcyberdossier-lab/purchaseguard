@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
 
     query = query.order('created_at', { ascending: false });
 
-    let { data: users, error } = await query;
+    let usersList: any[] = [];
+    const { data: users, error } = await query;
 
     if (error) {
       console.warn('Admin users join query failed, falling back to flat select:', error.message);
@@ -57,11 +58,13 @@ export async function GET(request: NextRequest) {
       }
       const fallback = await fallbackQuery;
       if (fallback.error) throw fallback.error;
-      users = fallback.data;
+      usersList = (fallback.data as any[]) || [];
+    } else {
+      usersList = (users as any[]) || [];
     }
 
     // Format with purchase count
-    const formatted = (users || []).map((u: any) => ({
+    const formatted = usersList.map((u: any) => ({
       id: u.id,
       email: u.email,
       full_name: u.full_name || '',
