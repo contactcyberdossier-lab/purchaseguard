@@ -8,7 +8,8 @@ export const runtime = 'edge';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, ShoppingBag, Eye, Edit2, Trash2 } from 'lucide-react';
+import { Plus, ShoppingBag, Eye, Edit2, Trash2, FileText } from 'lucide-react';
+import { ClaimTemplateModal } from '@/components/purchases/ClaimTemplateModal';
 import { Button } from '@/components/ui/Button';
 import { PurchaseFilters } from '@/components/purchases/PurchaseFilters';
 import { PurchaseModal } from '@/components/purchases/PurchaseModal';
@@ -34,6 +35,7 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<any | null>(null);
   const [deletingPurchase, setDeletingPurchase] = useState<any | null>(null);
+  const [claimPurchase, setClaimPurchase] = useState<any | null>(null);
 
   const fetchPurchases = async () => {
     setIsLoading(true);
@@ -191,6 +193,15 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
                     </td>
                     <td className="px-6 py-4 text-right rtl:text-left whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-primary hover:bg-primary/10"
+                          title="Generate Return / Warranty Template"
+                          onClick={() => setClaimPurchase(p)}
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
                         <Link href={`/${locale}/dashboard/purchases/${p.id}`}>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View details">
                             <Eye className="w-4 h-4" />
@@ -242,6 +253,15 @@ export default function PurchasesPage({ params: { locale } }: PurchasesPageProps
         onConfirm={handleDelete}
         itemName={deletingPurchase?.product_name || 'this purchase'}
       />
+
+      {/* Return & Warranty Claim Request Generator */}
+      {claimPurchase && (
+        <ClaimTemplateModal
+          isOpen={Boolean(claimPurchase)}
+          onClose={() => setClaimPurchase(null)}
+          purchase={claimPurchase}
+        />
+      )}
     </div>
   );
 }

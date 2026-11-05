@@ -197,8 +197,8 @@ async function syncGmailInbox(
   connectionId: string,
   accessToken: string
 ): Promise<{ scanned: number; synced: number; error?: string }> {
-  // Query Gmail search with broad purchase/receipt filter
-  const query = 'from:(amazon OR flipkart OR myntra OR apple OR swiggy OR zomato OR croma OR meesho OR reliance OR shopify OR bestbuy OR walmart OR target OR order OR invoice OR receipt) OR subject:(order OR confirmation OR invoice OR receipt OR shipped OR delivered OR tracking OR purchase OR return)';
+  // Query Gmail search with verified purchase/receipt criteria, filtering out promotional spam
+  const query = 'from:(amazon OR flipkart OR myntra OR apple OR swiggy OR zomato OR croma OR meesho OR reliance OR shopify OR bestbuy OR walmart OR target OR order OR invoice OR receipt) (subject:(order OR confirmation OR invoice OR receipt OR "tax invoice" OR "bill details") -subject:(deal OR sale OR discount OR "in your cart" OR "rate your" OR "review your" OR newsletter OR OTP OR "recommendation"))';
   const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30&q=${encodeURIComponent(query)}`;
 
   const res = await fetch(listUrl, {

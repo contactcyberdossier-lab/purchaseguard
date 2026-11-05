@@ -57,8 +57,19 @@ export function stripHtml(html: string): string {
  */
 export function classifyEmail(subject: string, bodyText: string): DetectedEmailType {
   const text = `${subject} ${bodyText}`.toLowerCase();
+  const lowerSub = subject.toLowerCase();
 
-  // 1. Ignore clear marketing, newsletters, or promo codes
+  // 1. Strict Subject Guard: Ignore marketing, cart recovery, reviews, and security notifications
+  const isMarketingOrSpamSubject =
+    /sale|deal|discount|off\b|%\s*off|recommend|picks?|cart\b|left\s*behind|rate\s*your|review\s*your|feedback|otp\b|one\s*time\s*password|verify|verification|login|alert|password\s*reset|newsletter|trending|price\s*drop|back\s*in\s*stock|hurry|exclusive|flat\s*\d+%/i.test(
+      lowerSub
+    ) && !/order\s*(confirmation|placed|#|id)|e-?receipt|tax\s*invoice/i.test(lowerSub);
+
+  if (isMarketingOrSpamSubject) {
+    return 'unrelated';
+  }
+
+  // 2. Ignore marketing, newsletters, promotional pitches, or non-transactional triggers
   const marketingKeywords = [
     'unsubscribe',
     'view in browser',
@@ -71,12 +82,26 @@ export function classifyEmail(subject: string, bodyText: string): DetectedEmailT
     'new arrivals',
     'clearance',
     'coupon code',
+    'still thinking about it',
+    'items in your cart',
+    'you left something behind',
+    'complete your purchase',
+    'recommended for you',
+    'top picks for you',
+    'how was your',
+    'rate your experience',
+    'rate your purchase',
+    'share your feedback',
+    'security alert',
+    'sign-in attempt',
+    'login notification',
+    'price drop alert',
   ];
 
   // Strong purchase indicators take precedence
   const hasStrongPurchaseIndicator =
     /order\s*(number|#|id|confirmation|placed|confirmed|details)/i.test(text) ||
-    /your\s*order\s*has\s*been\s*(placed|shipped|delivered|confirmed)/i.test(text) ||
+    /your\s*order\s*has\s*been\s*(placed|confirmed)/i.test(text) ||
     /thank\s*you\s*for\s*(your\s*)?(order|purchase)/i.test(text) ||
     /receipt\s*for\s*your\s*order/i.test(text) ||
     /tax\s*invoice|bill\s*details|payment\s*successful|payment\s*received|e-receipt/i.test(text);

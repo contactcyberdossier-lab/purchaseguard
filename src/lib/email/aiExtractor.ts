@@ -190,11 +190,16 @@ export async function parseAndExtractEmail({
     trackingNumber = trackingMatch[1];
   }
 
+  // Only mark as a new purchase if it is explicitly an order confirmation or warranty with valid order ID or paid amount
+  const hasValidPurchaseDetails = orderId !== null || total > 0;
+  const isGenuinePurchase =
+    (emailType === 'order_confirmation' || emailType === 'warranty') && hasValidPurchaseDetails;
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   const extracted: UniversalPurchaseOutput = {
     email_type: emailType,
-    is_purchase: true,
+    is_purchase: isGenuinePurchase,
     retailer_name: retailerName,
     retailer_domain: retailerDomain,
     order_id: orderId,
@@ -209,7 +214,7 @@ export async function parseAndExtractEmail({
     return_policy_url: null,
     return_window_days: 30,
     warranty_months: 12,
-    confidence: orderId && total > 0 ? Math.max(confidence, 0.92) : 0.75,
+    confidence: orderId && total > 0 ? Math.max(confidence, 0.92) : (hasValidPurchaseDetails ? 0.75 : 0.40),
     missing_fields: !orderId ? ['order_id'] : [],
   };
 
