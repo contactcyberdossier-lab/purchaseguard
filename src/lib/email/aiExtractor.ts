@@ -143,8 +143,8 @@ export async function parseAndExtractEmail({
   const orderIdMatch = cleanedText.match(
     /(?:order\s*(?:number|#|id|no\.?)|order\s*id\s*is|order\s*details\s*for)\s*[:\-#]?\s*([a-z0-9\-]{5,35})/i
   );
-  if (orderIdMatch) {
-    orderId = orderIdMatch[1];
+  if (orderIdMatch && /[a-z0-9]/i.test(orderIdMatch[1]) && !/^[\-_=.]+$/.test(orderIdMatch[1])) {
+    orderId = orderIdMatch[1].trim();
   } else {
     // Check for Amazon order format: 123-1234567-1234567
     const amazonOrderMatch = cleanedText.match(/\b\d{3}-\d{7}-\d{7}\b/);
@@ -159,28 +159,48 @@ export async function parseAndExtractEmail({
     }
   }
 
-  // 3. Extract Total Amount
-  let total = 0;
-  let currency: any = 'USD';
-  const totalMatch = cleanedText.match(
-    /(?:total|amount\s*paid|grand\s*total|order\s*total|paid|invoice\s*amount)\s*[:\-]?\s*(?:(?:rs\.?|inr|usd|eur|gbp|aud|cad|[$€£¥₹])\s*)?([$€£¥₹])?\s*([\d,]+(?:\.\d{1,2})?)/i
-  );
-  if (totalMatch) {
-    const rawVal = totalMatch[2]?.replace(/,/g, '');
-    if (rawVal && !isNaN(parseFloat(rawVal))) {
-      total = parseFloat(rawVal);
+  // Fallback: Check subject for Order ID (e.g. Namecheap Order Summary Order# 21850532)
+  if (!orderId || !/[a-z0-9]/i.test(orderId)) {
+    const subMatch = subject.match(/(?:order\s*(?:number|#|id|no\.?))\s*[:\-#]?\s*([a-z0-9]{5,35})/i);
+    if (subMatch && /[a-z0-9]/i.test(subMatch[1])) {
+      orderId = subMatch[1].trim();
     }
   }
 
-  // Detect currency from context
-  if (/[₹]|(?:rs\.?|inr)\b/i.test(cleanedText) || senderEmail.includes('.in')) {
-    currency = 'INR';
-  } else if (/[$]|\busd\b/i.test(cleanedText)) {
-    currency = 'USD';
-  } else if (/[€]|\beur\b/i.test(cleanedText)) {
-    currency = 'EUR';
-  } else if (/[£]|\bgbp\b/i.test(cleanedText)) {
-    currency = 'GBP';
+  // 3. Extract Total Amount and explicit currency symbol
+  let total = 0;
+  let currency: any = 'USD';
+  const totalMatch = cleanedText.match(
+    /(?:total|amount\s*paid|grand\s*total|order\s*total|paid|invoice\s*amount)\s*[:\-]?\s*(?:(rs\.?|inr|usd|eur|gbp|aud|cad|[$€£¥₹])\s*)?([$€£¥₹])?\s*([\d,]+(?:\.\d{1,2})?)/i
+  );
+  if (totalMatch) {
+    const rawVal = totalMatch[3]?.replace(/,/g, '');
+    if (rawVal && !isNaN(parseFloat(rawVal))) {
+      total = parseFloat(rawVal);
+    }
+    const sym = (totalMatch[1] || totalMatch[2] || '').toLowerCase();
+    if (sym === '$' || sym === 'usd') {
+      currency = 'USD';
+    } else if (sym === '₹' || sym === 'rs' || sym === 'rs.' || sym === 'inr') {
+      currency = 'INR';
+    } else if (sym === '€' || sym === 'eur') {
+      currency = 'EUR';
+    } else if (sym === '£' || sym === 'gbp') {
+      currency = 'GBP';
+    }
+  }
+
+  // If no explicit symbol next to total, infer from text context
+  if (!totalMatch?.[1] && !totalMatch?.[2]) {
+    if (/[₹]|(?:rs\.?|inr)\b/i.test(cleanedText) || senderEmail.includes('.in')) {
+      currency = 'INR';
+    } else if (/[$]|\busd\b/i.test(cleanedText)) {
+      currency = 'USD';
+    } else if (/[€]|\beur\b/i.test(cleanedText)) {
+      currency = 'EUR';
+    } else if (/[£]|\bgbp\b/i.test(cleanedText)) {
+      currency = 'GBP';
+    }
   }
 
   // 4. Extract Tracking Number if available

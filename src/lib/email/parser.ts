@@ -60,6 +60,11 @@ export function classifyEmail(subject: string, bodyText: string): DetectedEmailT
   const lowerSub = subject.toLowerCase();
 
   // 1. Strict Subject Guard: Ignore marketing, cart recovery, reviews, and security notifications
+  // Ignore system alert notifications or reminders from PurchaseGuard
+  if (lowerSub.includes('purchaseguard alert') || text.includes('purchaseguard alert') || text.includes('3 days left to return') || senderEmail.toLowerCase().includes('purchaseguard')) {
+    return 'unrelated';
+  }
+
   const isMarketingOrSpamSubject =
     /sale|deal|discount|off\b|%\s*off|recommend|picks?|cart\b|left\s*behind|rate\s*your|review\s*your|feedback|otp\b|one\s*time\s*password|verify|verification|login|alert|password\s*reset|newsletter|trending|price\s*drop|back\s*in\s*stock|hurry|exclusive|flat\s*\d+%/i.test(
       lowerSub
@@ -221,6 +226,18 @@ export function detectKnownRetailer(senderEmail: string, subject: string, bodyTe
   }
   if (sender.includes('zara') || text.includes('zara.com')) {
     return { retailerName: 'Zara', retailerDomain: 'zara.com', confidence: 0.95 };
+  }
+  if (sender.includes('namecheap') || text.includes('namecheap.com') || text.includes('namecheap')) {
+    return { retailerName: 'Namecheap', retailerDomain: 'namecheap.com', confidence: 0.98 };
+  }
+  if (sender.includes('googleplay') || text.includes('google play') || text.includes('google store')) {
+    return { retailerName: 'Google', retailerDomain: 'google.com', confidence: 0.98 };
+  }
+  if (sender.includes('hostinger') || text.includes('hostinger')) {
+    return { retailerName: 'Hostinger', retailerDomain: 'hostinger.com', confidence: 0.98 };
+  }
+  if (sender.includes('godaddy') || text.includes('godaddy')) {
+    return { retailerName: 'GoDaddy', retailerDomain: 'godaddy.com', confidence: 0.98 };
   }
   if (sender.includes('shopify') || text.includes('shopify.com') || text.includes('powered by shopify')) {
     // Extract domain from sender
