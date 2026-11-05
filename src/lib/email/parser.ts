@@ -55,7 +55,7 @@ export function stripHtml(html: string): string {
 /**
  * Classifies email subject and body into purchase categories or unrelated marketing
  */
-export function classifyEmail(subject: string, bodyText: string): DetectedEmailType {
+export function classifyEmail(subject: string, bodyText: string, senderEmail: string = ''): DetectedEmailType {
   const text = `${subject} ${bodyText}`.toLowerCase();
   const lowerSub = subject.toLowerCase();
 

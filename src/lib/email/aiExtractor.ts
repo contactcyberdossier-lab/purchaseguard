@@ -104,7 +104,7 @@ export async function parseAndExtractEmail({
   emailBody: string;
 }): Promise<{ data: UniversalPurchaseOutput; status: 'active' | 'review_needed' | 'ignored' }> {
   const cleanedText = stripHtml(emailBody);
-  const emailType = classifyEmail(subject, cleanedText);
+  const emailType = classifyEmail(subject, cleanedText, senderEmail);
 
   if (emailType === 'unrelated') {
     return {

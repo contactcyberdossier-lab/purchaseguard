@@ -93,7 +93,7 @@ export async function syncUserEmailAccounts(
 
   let totalScanned = 0;
   let totalSynced = 0;
-  const details = [];
+  const details: NonNullable<SyncResult['details']> = [];
 
   for (const conn of connections) {
     let inboxScanned = 0;
