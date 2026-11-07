@@ -165,7 +165,7 @@ export async function syncUserEmailAccounts(
     await supabase.from('audit_logs').insert({
       user_id: userId,
       action: 'email_synced',
-      metadata: { totalScanned, totalSynced, inboxes: connections.map(c => c.email_address) },
+      metadata: { totalScanned, totalSynced, inboxes: connections.map((c: any) => c.email_address) },
     });
   } catch {}
 
