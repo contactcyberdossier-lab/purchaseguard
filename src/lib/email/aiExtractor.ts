@@ -138,6 +138,16 @@ export async function parseAndExtractEmail({
   let retailerDomain = knownRetailer?.retailerDomain || null;
   let confidence = knownRetailer?.confidence || 0.75;
 
+  // Fallback: extract brand from merchant sender domain if not recognized
+  if (!knownRetailer) {
+    const domainMatch = senderEmail.match(/@(?:(?:orders?|support|receipts?|noreply|no-reply|billing|info|service|mail)\.)?([a-z0-9-]+)\.([a-z]{2,})/i);
+    if (domainMatch && domainMatch[1] && !['gmail', 'yahoo', 'hotmail', 'outlook', 'proton', 'icloud', 'google'].includes(domainMatch[1].toLowerCase())) {
+      retailerName = domainMatch[1].charAt(0).toUpperCase() + domainMatch[1].slice(1).toLowerCase();
+      retailerDomain = `${domainMatch[1]}.${domainMatch[2]}`.toLowerCase();
+      confidence = 0.85;
+    }
+  }
+
   // 2. Extract Order ID via regex
   let orderId: string | null = null;
   const orderIdMatch = cleanedText.match(
@@ -213,7 +223,11 @@ export async function parseAndExtractEmail({
   // Only mark as a new purchase if it is explicitly an order confirmation or warranty with valid order ID or paid amount
   const hasValidPurchaseDetails = orderId !== null || total > 0;
   const isGenuinePurchase =
-    (emailType === 'order_confirmation' || emailType === 'warranty') && hasValidPurchaseDetails;
+    (emailType === 'order_confirmation' ||
+      emailType === 'warranty' ||
+      emailType === 'delivery_update' ||
+      emailType === 'shipping_update') &&
+    hasValidPurchaseDetails;
 
   const todayStr = new Date().toISOString().split('T')[0];
 

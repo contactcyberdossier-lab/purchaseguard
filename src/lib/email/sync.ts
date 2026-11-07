@@ -198,8 +198,8 @@ async function syncGmailInbox(
   accessToken: string
 ): Promise<{ scanned: number; synced: number; error?: string }> {
   // Query Gmail search with verified purchase/receipt criteria, filtering out promotional spam
-  const query = 'from:(amazon OR flipkart OR myntra OR apple OR swiggy OR zomato OR croma OR meesho OR reliance OR shopify OR bestbuy OR walmart OR target OR order OR invoice OR receipt) (subject:(order OR confirmation OR invoice OR receipt OR "tax invoice" OR "bill details") -subject:(deal OR sale OR discount OR "in your cart" OR "rate your" OR "review your" OR newsletter OR OTP OR "recommendation"))';
-  const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30&q=${encodeURIComponent(query)}`;
+  const query = '(from:(amazon OR flipkart OR myntra OR apple OR swiggy OR zomato OR croma OR meesho OR reliance OR shopify OR bestbuy OR walmart OR target OR namecheap OR hostinger OR godaddy OR google OR uber OR ebay OR nike OR adidas OR blinkit OR zepto OR nykaa OR ajio) OR subject:(order OR confirmation OR invoice OR receipt OR "tax invoice" OR "bill details" OR delivered OR shipped OR purchase OR "e-receipt" OR booking OR ticket)) -subject:(deal OR sale OR discount OR "in your cart" OR "rate your" OR "review your" OR newsletter OR OTP OR "recommendation" OR "price drop" OR "left behind" OR "top picks")';
+  const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=${encodeURIComponent(query)}`;
 
   const res = await fetch(listUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -222,12 +222,12 @@ async function syncGmailInbox(
     // Check if already processed
     const { data: existing } = await supabase
       .from('processed_emails')
-      .select('id')
+      .select('id, email_type')
       .eq('user_id', userId)
       .eq('message_id', m.id)
       .maybeSingle();
 
-    if (existing) continue;
+    if (existing && existing.email_type !== 'unrelated') continue;
 
     // Fetch full message payload
     const msgRes = await fetch(
@@ -266,15 +266,26 @@ async function syncGmailInbox(
     });
 
     // Record in processed_emails audit table
-    await supabase.from('processed_emails').insert({
-      user_id: userId,
-      email_connection_id: connectionId,
-      message_id: m.id,
-      email_type: extracted.email_type,
-      retailer_detected: extracted.retailer_name,
-      extraction_confidence: extracted.confidence,
-      raw_reference: `Subject: ${subject.slice(0, 200)} | From: ${from.slice(0, 100)}`,
-    });
+    if (existing) {
+      await supabase
+        .from('processed_emails')
+        .update({
+          email_type: extracted.email_type,
+          retailer_detected: extracted.retailer_name,
+          extraction_confidence: extracted.confidence,
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase.from('processed_emails').insert({
+        user_id: userId,
+        email_connection_id: connectionId,
+        message_id: m.id,
+        email_type: extracted.email_type,
+        retailer_detected: extracted.retailer_name,
+        extraction_confidence: extracted.confidence,
+        raw_reference: `Subject: ${subject.slice(0, 200)} | From: ${from.slice(0, 100)}`,
+      });
+    }
 
     scanned++;
 
@@ -356,7 +367,7 @@ async function syncOutlookInbox(
   connectionId: string,
   accessToken: string
 ): Promise<{ scanned: number; synced: number; error?: string }> {
-  const url = `https://graph.microsoft.com/v1.0/me/messages?$top=30&$search="order OR confirmation OR shipped OR delivered OR receipt OR invoice"&$select=id,subject,from,bodyPreview,receivedDateTime,body`;
+  const url = `https://graph.microsoft.com/v1.0/me/messages?$top=100&$search="order OR confirmation OR shipped OR delivered OR receipt OR invoice"&$select=id,subject,from,bodyPreview,receivedDateTime,body`;
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -377,12 +388,12 @@ async function syncOutlookInbox(
   for (const m of messages) {
     const { data: existing } = await supabase
       .from('processed_emails')
-      .select('id')
+      .select('id, email_type')
       .eq('user_id', userId)
       .eq('message_id', m.id)
       .maybeSingle();
 
-    if (existing) continue;
+    if (existing && existing.email_type !== 'unrelated') continue;
 
     const from = m.from?.emailAddress?.address || '';
     const subject = m.subject || '';
@@ -402,15 +413,26 @@ async function syncOutlookInbox(
       emailBody: bodyText,
     });
 
-    await supabase.from('processed_emails').insert({
-      user_id: userId,
-      email_connection_id: connectionId,
-      message_id: m.id,
-      email_type: extracted.email_type,
-      retailer_detected: extracted.retailer_name,
-      extraction_confidence: extracted.confidence,
-      raw_reference: `Subject: ${subject.slice(0, 200)} | From: ${from.slice(0, 100)}`,
-    });
+    if (existing) {
+      await supabase
+        .from('processed_emails')
+        .update({
+          email_type: extracted.email_type,
+          retailer_detected: extracted.retailer_name,
+          extraction_confidence: extracted.confidence,
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase.from('processed_emails').insert({
+        user_id: userId,
+        email_connection_id: connectionId,
+        message_id: m.id,
+        email_type: extracted.email_type,
+        retailer_detected: extracted.retailer_name,
+        extraction_confidence: extracted.confidence,
+        raw_reference: `Subject: ${subject.slice(0, 200)} | From: ${from.slice(0, 100)}`,
+      });
+    }
 
     scanned++;
 
