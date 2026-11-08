@@ -427,11 +427,9 @@ export async function parseAndExtractEmail({
   // Determine genuine purchase qualification
   const hasValidPurchaseDetails = orderId !== null || financials.total > 0;
   const isGenuinePurchase =
-    (emailType === 'order_confirmation' ||
-      emailType === 'warranty' ||
-      emailType === 'delivery_update' ||
-      emailType === 'shipping_update') &&
-    hasValidPurchaseDetails;
+    emailType === 'order_confirmation' ||
+    emailType === 'warranty' ||
+    ((emailType === 'delivery_update' || emailType === 'shipping_update') && hasValidPurchaseDetails);
 
   const todayStr = new Date().toISOString().split('T')[0];
 

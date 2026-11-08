@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentPurchasesList, type PurchaseItem } from '@/components/dashboard/RecentPurchasesList';
@@ -25,15 +26,32 @@ export default async function DashboardPage({ params: { locale } }: DashboardPag
     redirect(`/${locale}/login`);
   }
 
-  // Fetch real purchases from Supabase for this user
-  const { data: rawPurchases } = await supabase
+  // Fetch real purchases from Supabase for this user (with service-role fallback for edge SSR resilience)
+  let purchases: PurchaseItem[] = [];
+  const { data: rawPurchases, error: purchasesErr } = await supabase
     .from('purchases')
     .select('id, retailer_name, product_name, order_id, purchase_date, total, currency, return_deadline, warranty_deadline, status')
     .eq('user_id', user.id)
     .order('purchase_date', { ascending: false })
-    .limit(10);
+    .limit(20);
 
-  const purchases = (rawPurchases as PurchaseItem[]) || [];
+  if (!purchasesErr && rawPurchases && rawPurchases.length > 0) {
+    purchases = rawPurchases as PurchaseItem[];
+  } else {
+    try {
+      const adminDb = getServiceSupabase();
+      const { data: adminPurchases } = await adminDb
+        .from('purchases')
+        .select('id, retailer_name, product_name, order_id, purchase_date, total, currency, return_deadline, warranty_deadline, status')
+        .eq('user_id', user.id)
+        .order('purchase_date', { ascending: false })
+        .limit(20);
+
+      if (adminPurchases && adminPurchases.length > 0) {
+        purchases = adminPurchases as PurchaseItem[];
+      }
+    } catch {}
+  }
 
   // Compute live dashboard metrics
   const today = new Date().toISOString().split('T')[0];

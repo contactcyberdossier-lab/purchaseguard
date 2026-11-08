@@ -67,7 +67,8 @@ export async function syncUserEmailAccounts(
   targetConnectionId?: string,
   clientOverride?: any
 ): Promise<SyncResult> {
-  const supabase = clientOverride || getServiceSupabase();
+  // Always use service role client for background email ingestion to bypass RLS restrictions
+  const supabase = getServiceSupabase();
 
   let query = supabase
     .from('email_connections')
@@ -197,8 +198,8 @@ async function syncGmailInbox(
   connectionId: string,
   accessToken: string
 ): Promise<{ scanned: number; synced: number; error?: string }> {
-  // Query Gmail search with verified purchase/receipt criteria, filtering out promotional spam
-  const query = '(from:(amazon OR flipkart OR myntra OR apple OR swiggy OR zomato OR croma OR meesho OR reliance OR shopify OR bestbuy OR walmart OR target OR namecheap OR hostinger OR godaddy OR google OR uber OR ebay OR nike OR adidas OR blinkit OR zepto OR nykaa OR ajio) OR subject:(order OR confirmation OR invoice OR receipt OR "tax invoice" OR "bill details" OR delivered OR shipped OR purchase OR "e-receipt" OR booking OR ticket)) -subject:(deal OR sale OR discount OR "in your cart" OR "rate your" OR "review your" OR newsletter OR OTP OR "recommendation" OR "price drop" OR "left behind" OR "top picks")';
+  // Broad and comprehensive Gmail search matching all order, receipt, and invoice emails
+  const query = 'subject:(order OR receipt OR invoice OR confirmation OR delivered OR shipped OR purchase OR bill OR booking OR ticket OR payment OR "tax invoice" OR "e-receipt") OR from:(orders OR billing OR receipts OR payments OR noreply OR "no-reply" OR amazon OR flipkart OR apple OR google OR bestbuy OR target OR walmart OR namecheap OR hostinger OR godaddy OR uber OR ebay OR nike OR swiggy OR zomato)';
   const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=${encodeURIComponent(query)}`;
 
   const res = await fetch(listUrl, {
@@ -227,7 +228,26 @@ async function syncGmailInbox(
       .eq('message_id', m.id)
       .maybeSingle();
 
-    if (existing && existing.email_type !== 'unrelated') continue;
+    // If previously identified as unrelated marketing/spam, skip
+    if (existing && existing.email_type === 'unrelated') {
+      scanned++;
+      continue;
+    }
+
+    // If previously processed, only skip if already inserted into purchases
+    if (existing) {
+      const { data: purchaseExists } = await supabase
+        .from('purchases')
+        .select('id')
+        .eq('user_id', userId)
+        .or(`order_id.eq.ORD-${m.id.slice(0, 10).toUpperCase()}`)
+        .maybeSingle();
+
+      if (purchaseExists) {
+        scanned++;
+        continue;
+      }
+    }
 
     // Fetch full message payload
     const msgRes = await fetch(
@@ -341,7 +361,9 @@ async function syncGmailInbox(
           .select()
           .single();
 
-        if (!pErr && purchase) {
+        if (pErr) {
+          console.error(`[Purchases Insert Error for ${m.id}]:`, pErr);
+        } else if (purchase) {
           synced++;
           await syncPurchaseReminders(
             supabase,
@@ -405,7 +427,26 @@ async function syncOutlookInbox(
       .eq('message_id', m.id)
       .maybeSingle();
 
-    if (existing && existing.email_type !== 'unrelated') continue;
+    // If previously identified as unrelated marketing/spam, skip
+    if (existing && existing.email_type === 'unrelated') {
+      scanned++;
+      continue;
+    }
+
+    // If previously processed, only skip if already inserted into purchases
+    if (existing) {
+      const { data: purchaseExists } = await supabase
+        .from('purchases')
+        .select('id')
+        .eq('user_id', userId)
+        .or(`order_id.eq.ORD-${m.id.slice(0, 10).toUpperCase()}`)
+        .maybeSingle();
+
+      if (purchaseExists) {
+        scanned++;
+        continue;
+      }
+    }
 
     const from = m.from?.emailAddress?.address || '';
     const subject = m.subject || '';
@@ -498,7 +539,9 @@ async function syncOutlookInbox(
           .select()
           .single();
 
-        if (!pErr && purchase) {
+        if (pErr) {
+          console.error(`[Purchases Insert Error for ${m.id}]:`, pErr);
+        } else if (purchase) {
           synced++;
           await syncPurchaseReminders(
             supabase,

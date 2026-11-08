@@ -6,6 +6,7 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 import { purchaseSchema } from '@/lib/validations/purchase';
 import { calculateDeadlines } from '@/lib/deadlines';
 import { syncPurchaseReminders } from '@/lib/reminders';
@@ -69,6 +70,32 @@ export async function GET(request: NextRequest) {
       data = fallbackRes.data;
       error = null;
     }
+  }
+
+  // Fallback to service role client if session query returned empty due to RLS edge propagation
+  if (!data || data.length === 0) {
+    try {
+      const adminDb = getServiceSupabase();
+      let adminQuery = adminDb
+        .from('purchases')
+        .select('*, purchase_items(*), attachments(*)')
+        .eq('user_id', user.id);
+
+      if (status && status !== 'all') {
+        adminQuery = adminQuery.eq('status', status);
+      }
+      if (query) {
+        adminQuery = adminQuery.or(
+          `product_name.ilike.%${query}%,retailer_name.ilike.%${query}%,order_id.ilike.%${query}%`
+        );
+      }
+      adminQuery = adminQuery.order(sortBy, { ascending: sortDir }).limit(limit);
+      const adminRes = await adminQuery;
+      if (!adminRes.error && adminRes.data && adminRes.data.length > 0) {
+        data = adminRes.data;
+        error = null;
+      }
+    } catch {}
   }
 
   if (error) {

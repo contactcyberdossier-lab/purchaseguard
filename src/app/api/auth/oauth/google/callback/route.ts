@@ -90,16 +90,20 @@ export async function GET(request: NextRequest) {
         // Check if connection already exists (case-insensitive) to avoid ON CONFLICT constraint mismatch
         const { data: existing } = await client
           .from('email_connections')
-          .select('id')
+          .select('id, refresh_token_encrypted')
           .eq('user_id', user.id)
           .eq('provider', 'gmail')
           .ilike('email_address', normalizedEmail)
           .maybeSingle();
 
         if (existing?.id) {
+          const updatePayload: any = { ...connPayload };
+          if (!refreshTokenEncrypted && existing.refresh_token_encrypted) {
+            delete updatePayload.refresh_token_encrypted;
+          }
           const { error: updateErr } = await client
             .from('email_connections')
-            .update(connPayload)
+            .update(updatePayload)
             .eq('id', existing.id);
           if (!updateErr) {
             saveSuccess = true;
@@ -138,10 +142,10 @@ export async function GET(request: NextRequest) {
       });
     } catch {}
 
-    // Trigger initial automated sync for incoming receipts with authenticated session
+    // Trigger initial automated sync for incoming receipts with service role authority
     let syncParams = '';
     try {
-      const syncResult = await syncUserEmailAccounts(user.id, undefined, supabase);
+      const syncResult = await syncUserEmailAccounts(user.id);
       if (syncResult.syncedCount > 0) {
         syncParams = `&synced=${syncResult.syncedCount}`;
       } else if (syncResult.error) {

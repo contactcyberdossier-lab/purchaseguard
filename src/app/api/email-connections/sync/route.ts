@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await syncUserEmailAccounts(user.id, connectionId, supabase);
+    const result = await syncUserEmailAccounts(user.id, connectionId);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('Email sync API error:', err);
