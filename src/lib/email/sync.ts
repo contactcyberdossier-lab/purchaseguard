@@ -10,7 +10,7 @@ import { refreshMicrosoftAccessToken } from '../oauth/outlook';
 import { parseAndExtractEmail } from './aiExtractor';
 import { calculateDeadlines } from '../deadlines';
 import { syncPurchaseReminders } from '../reminders';
-import { stripHtml } from './parser';
+import { stripHtml, extractCleanProductName } from './parser';
 
 export interface SyncResult {
   success: boolean;
@@ -291,10 +291,10 @@ async function syncGmailInbox(
 
     // If it's a purchase confirmation, add to purchases table
     if (extracted.is_purchase) {
-      // Check for duplicate order ID
+      // Check for duplicate order ID or existing purchase record
       let duplicateQuery = supabase
         .from('purchases')
-        .select('id')
+        .select('id, tracking_number, total, product_name')
         .eq('user_id', userId)
         .eq('retailer_name', extracted.retailer_name);
 
@@ -313,10 +313,9 @@ async function syncGmailInbox(
           customReturnDays: extracted.return_window_days,
         });
 
-        const productName = subject
-          .replace(/^(re:|fwd:|order confirmation:|your order from)/i, '')
-          .trim()
-          .slice(0, 150) || `${extracted.retailer_name} Order`;
+        const productName =
+          extracted.items[0]?.name ||
+          extractCleanProductName(subject, bodyText, extracted.retailer_name);
 
         const { data: purchase, error: pErr } = await supabase
           .from('purchases')
@@ -350,6 +349,19 @@ async function syncGmailInbox(
             purchase.return_deadline,
             purchase.warranty_deadline
           );
+        }
+      } else {
+        // Upgrade existing purchase record with higher-accuracy details (e.g. tracking number or final total)
+        const updates: any = {};
+        if (extracted.tracking_number && !duplicate.tracking_number) {
+          updates.tracking_number = extracted.tracking_number;
+        }
+        if (extracted.total > 0 && (!duplicate.total || duplicate.total === 0)) {
+          updates.total = extracted.total;
+          updates.subtotal = extracted.subtotal;
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('purchases').update(updates).eq('id', duplicate.id);
         }
       }
     }
@@ -439,7 +451,7 @@ async function syncOutlookInbox(
     if (extracted.is_purchase) {
       let duplicateQuery = supabase
         .from('purchases')
-        .select('id')
+        .select('id, tracking_number, total, product_name')
         .eq('user_id', userId)
         .eq('retailer_name', extracted.retailer_name);
 
@@ -458,10 +470,9 @@ async function syncOutlookInbox(
           customReturnDays: extracted.return_window_days,
         });
 
-        const productName = subject
-          .replace(/^(re:|fwd:|order confirmation:|your order from)/i, '')
-          .trim()
-          .slice(0, 150) || `${extracted.retailer_name} Order`;
+        const productName =
+          extracted.items[0]?.name ||
+          extractCleanProductName(subject, bodyText, extracted.retailer_name);
 
         const { data: purchase, error: pErr } = await supabase
           .from('purchases')
@@ -495,6 +506,19 @@ async function syncOutlookInbox(
             purchase.return_deadline,
             purchase.warranty_deadline
           );
+        }
+      } else {
+        // Upgrade existing purchase record with higher-accuracy details (e.g. tracking number or final total)
+        const updates: any = {};
+        if (extracted.tracking_number && !duplicate.tracking_number) {
+          updates.tracking_number = extracted.tracking_number;
+        }
+        if (extracted.total > 0 && (!duplicate.total || duplicate.total === 0)) {
+          updates.total = extracted.total;
+          updates.subtotal = extracted.subtotal;
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('purchases').update(updates).eq('id', duplicate.id);
         }
       }
     }
