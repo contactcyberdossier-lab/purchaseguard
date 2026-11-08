@@ -41,11 +41,7 @@ export async function POST(request: NextRequest) {
       body: `✅ *PurchaseGuard Test Alert*\n\nThis is a verification test to confirm your WhatsApp notifications are working!\n\n` + testMessage,
     });
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error || 'Failed to dispatch WhatsApp message' }, { status: 500 });
-    }
-
-    // Save phone and preference to user profile
+    // Save phone and preference to user profile even if live gateway returned an auth error
     await supabase
       .from('users')
       .update({
@@ -53,6 +49,10 @@ export async function POST(request: NextRequest) {
         whatsapp_enabled: true,
       })
       .eq('id', user.id);
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || 'Failed to dispatch WhatsApp message' }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,

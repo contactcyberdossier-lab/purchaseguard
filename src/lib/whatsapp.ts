@@ -152,7 +152,16 @@ export async function sendWhatsAppMessage({
             // Ignore template error and return original error
           }
         }
-        return { success: false, error: data.error?.message || 'Meta WhatsApp dispatch failed' };
+        let errorMsg = data.error?.message || 'Meta WhatsApp dispatch failed';
+        if (
+          data.error?.code === 190 ||
+          errorMsg.toLowerCase().includes('authentication error') ||
+          errorMsg.toLowerCase().includes('access token')
+        ) {
+          errorMsg =
+            'WhatsApp API Access Token has expired (Meta developer test tokens expire every 24h). In Meta Business Suite, generate a permanent System User Token with "whatsapp_business_messaging" permission and update WHATSAPP_CLOUD_ACCESS_TOKEN in Vercel.';
+        }
+        return { success: false, error: errorMsg };
       }
 
       return { success: true, messageId: data.messages?.[0]?.id };
