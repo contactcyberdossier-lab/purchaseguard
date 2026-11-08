@@ -21,33 +21,35 @@ export function Header({ locale }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] dark:border-white/[0.06] bg-background/70 dark:bg-[#07090e]/80 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href={`/${locale}`} className="flex items-center gap-2.5 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm group-hover:scale-105 transition-transform">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] group-hover:scale-105 transition-all">
             <Shield className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-foreground">
-            {dict.common.appName}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text">
+              {dict.common.appName}
+            </span>
+          </div>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-          <Link href={`#features`} className="hover:text-foreground transition-colors">
+        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
+          <Link href={`#features`} className="hover:text-foreground transition-colors hover:scale-[1.02]">
             {dict.nav.features}
           </Link>
-          <Link href={`#how-it-works`} className="hover:text-foreground transition-colors">
+          <Link href={`#how-it-works`} className="hover:text-foreground transition-colors hover:scale-[1.02]">
             {dict.nav.howItWorks}
           </Link>
-          <Link href={`#pricing`} className="hover:text-foreground transition-colors">
+          <Link href={`#pricing`} className="hover:text-foreground transition-colors hover:scale-[1.02]">
             {dict.nav.pricing}
           </Link>
-          <Link href={`#security`} className="hover:text-foreground transition-colors">
+          <Link href={`#security`} className="hover:text-foreground transition-colors hover:scale-[1.02]">
             {dict.nav.security}
           </Link>
-          <Link href={`#faq`} className="hover:text-foreground transition-colors">
+          <Link href={`#faq`} className="hover:text-foreground transition-colors hover:scale-[1.02]">
             {dict.nav.faq}
           </Link>
         </nav>
@@ -57,12 +59,12 @@ export function Header({ locale }: HeaderProps) {
           <LanguageSelector currentLocale={locale} />
           <ThemeToggle />
           <Link href={`/${locale}/login`}>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="hover:bg-white/[0.06] text-muted-foreground hover:text-foreground">
               {dict.nav.signIn}
             </Button>
           </Link>
           <Link href={`/${locale}/register`}>
-            <Button size="sm">
+            <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-500/25 border border-indigo-400/20">
               {dict.nav.getStarted}
             </Button>
           </Link>
